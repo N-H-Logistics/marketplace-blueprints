@@ -2,7 +2,7 @@
 # Serves a simple web interface that calls the managed agent's chat API.
 # The app self-discovers the agent's deployment URL and API key at startup.
 resource "digitalocean_app" "chat_ui" {
-  depends_on = [digitalocean_gradientai_agent.rag_agent]
+  depends_on = [null_resource.agent_post_setup]
 
   spec {
     name   = "${local.resource_name}-chat"
@@ -37,7 +37,7 @@ resource "digitalocean_app" "chat_ui" {
 
       env {
         key   = "AGENT_UUID"
-        value = digitalocean_gradientai_agent.rag_agent.id
+        value = local.active_agent_uuid
         scope = "RUN_TIME"
       }
 
@@ -50,7 +50,7 @@ resource "digitalocean_app" "chat_ui" {
 
       env {
         key   = "AGENT_NAME"
-        value = digitalocean_gradientai_agent.rag_agent.name
+        value = local.active_agent_name
         scope = "RUN_TIME"
       }
     }

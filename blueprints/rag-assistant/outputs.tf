@@ -4,7 +4,7 @@ output "app_url" {
 }
 
 output "agent_uuid" {
-  value       = digitalocean_gradientai_agent.rag_agent.id
+  value       = local.active_agent_uuid
   description = "UUID of the managed RAG agent."
 }
 
@@ -25,7 +25,7 @@ output "app_platform_id" {
 }
 
 output "agent_id" {
-  value       = digitalocean_gradientai_agent.rag_agent.id
+  value       = local.active_agent_uuid
   description = "GenAI agent resource ID."
 }
 

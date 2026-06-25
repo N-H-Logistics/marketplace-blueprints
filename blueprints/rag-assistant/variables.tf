@@ -54,6 +54,7 @@ variable "default_model" {
 
 variable "model_uuid" {
   type        = string
+  default     = ""
   description = "UUID of the serverless inference model. Resolved by do-terraform from the model internal name."
 }
 
@@ -93,6 +94,18 @@ variable "_app_source_branch" {
 // =============================================================================
 // AGENT CONFIGURATION
 // =============================================================================
+
+variable "existing_agent_uuid" {
+  type        = string
+  default     = ""
+  description = "Existing GenAI agent UUID. When set, Terraform uses this agent instead of creating a new one."
+}
+
+variable "existing_agent_name" {
+  type        = string
+  default     = "RAG Assistant"
+  description = "Display name for an existing GenAI agent used by the chat UI."
+}
 
 variable "agent_instruction" {
   type        = string

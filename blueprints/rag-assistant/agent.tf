@@ -1,5 +1,7 @@
 # Managed agent for RAG interactions.
 resource "digitalocean_gradientai_agent" "rag_agent" {
+  count = var.existing_agent_uuid == "" ? 1 : 0
+
   name        = "${local.resource_name}-agent"
   description = "RAG Assistant powered by serverless inference with knowledge base retrieval and guardrails."
   # NOTE: GenAI platform is currently only available in tor1.
@@ -16,6 +18,11 @@ resource "digitalocean_gradientai_agent" "rag_agent" {
   retrieval_method  = "RETRIEVAL_METHOD_SUB_QUERIES"
 }
 
+locals {
+  active_agent_uuid = var.existing_agent_uuid != "" ? var.existing_agent_uuid : digitalocean_gradientai_agent.rag_agent[0].id
+  active_agent_name = var.existing_agent_uuid != "" ? var.existing_agent_name : digitalocean_gradientai_agent.rag_agent[0].name
+}
+
 # Post-creation: attach KB and guardrails.
 # The terraform provider cannot attach these on create (godo SDK limitation).
 resource "null_resource" "agent_post_setup" {
@@ -25,14 +32,14 @@ resource "null_resource" "agent_post_setup" {
   ]
 
   triggers = {
-    agent_id = digitalocean_gradientai_agent.rag_agent.id
+    agent_id = local.active_agent_uuid
     kb_id    = digitalocean_gradientai_knowledge_base.kb.id
   }
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
-      AGENT_ID="${digitalocean_gradientai_agent.rag_agent.id}"
+      AGENT_ID="${local.active_agent_uuid}"
       KB_ID="${digitalocean_gradientai_knowledge_base.kb.id}"
       TOKEN="${var.do_token}"
       API="https://api.digitalocean.com/v2/gen-ai"
