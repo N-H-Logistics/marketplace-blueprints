@@ -12,13 +12,14 @@ Environment variables (injected by terraform via App Platform):
 """
 
 import logging
+import json
 import os
 import sys
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger("chat-ui")
@@ -114,13 +115,30 @@ async def chat(request: Request):
         "Content-Type": "application/json",
     }
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(AGENT_ENDPOINT, json={"messages": messages}, headers=headers)
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.post(AGENT_ENDPOINT, json={"messages": messages}, headers=headers)
+    except httpx.TimeoutException:
+        return JSONResponse(
+            status_code=504,
+            content={"error": "Agent phan hoi qua cham. Vui long thu lai sau it phut."},
+        )
+    except httpx.RequestError as exc:
+        logger.exception("Agent request failed")
+        return JSONResponse(status_code=502, content={"error": f"Khong goi duoc agent: {exc}"})
 
     try:
         data = resp.json()
     except Exception:
         return JSONResponse(status_code=resp.status_code, content={"error": resp.text})
+
+    if resp.status_code >= 400:
+        error = data.get("error") or data.get("detail") or data.get("message") or resp.text
+        if isinstance(error, dict):
+            error = error.get("message") or str(error)
+        if resp.status_code == 429:
+            error = "Agent dang bi gioi han tan suat. Vui long doi mot luc roi thu lai."
+        return JSONResponse(status_code=resp.status_code, content={"error": error})
 
     # Extract the response text from OpenAI-compatible format.
     content = ""
@@ -128,5 +146,91 @@ async def chat(request: Request):
         content = data["choices"][0].get("message", {}).get("content", "")
     elif "detail" in data:
         content = f"Error: {data['detail']}"
+    elif "message" in data:
+        content = data["message"]
 
     return JSONResponse(content={"content": content, "usage": data.get("usage")})
+
+
+@app.post("/api/chat/stream")
+async def chat_stream(request: Request):
+    """Stream a chat response from the managed agent as plain text chunks."""
+    if not AGENT_ENDPOINT or not AGENT_API_KEY:
+        return JSONResponse(status_code=503, content={"error": "Agent not ready"})
+
+    body = await request.json()
+    message = body.get("message", "")
+    history = body.get("history", [])
+
+    messages = []
+    for h in history:
+        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    messages.append({"role": "user", "content": message})
+
+    headers = {
+        "Authorization": f"Bearer {AGENT_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    async def generate():
+        try:
+            timeout = httpx.Timeout(120.0, read=120.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                async with client.stream(
+                    "POST",
+                    AGENT_ENDPOINT,
+                    json={"messages": messages, "stream": True},
+                    headers=headers,
+                ) as resp:
+                    if resp.status_code >= 400:
+                        text = await resp.aread()
+                        try:
+                            data = json.loads(text.decode("utf-8"))
+                            error = data.get("error") or data.get("detail") or data.get("message") or text.decode("utf-8")
+                            if isinstance(error, dict):
+                                error = error.get("message") or str(error)
+                        except Exception:
+                            error = text.decode("utf-8", errors="ignore")
+                        if resp.status_code == 429:
+                            error = "Agent đang bị giới hạn tần suất. Vui lòng đợi một lúc rồi thử lại."
+                        yield error
+                        return
+
+                    streamed_any = False
+                    buffered = ""
+                    async for line in resp.aiter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("data:"):
+                            line = line[5:].strip()
+                        if line == "[DONE]":
+                            return
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            buffered += line
+                            continue
+
+                        if "choices" in data and data["choices"]:
+                            choice = data["choices"][0]
+                            delta = choice.get("delta", {})
+                            chunk = delta.get("content") or choice.get("message", {}).get("content") or ""
+                            if chunk:
+                                streamed_any = True
+                                yield chunk
+                        elif "message" in data:
+                            streamed_any = True
+                            yield data["message"]
+                        elif "detail" in data:
+                            yield str(data["detail"])
+                            return
+
+                    if not streamed_any and buffered:
+                        yield buffered
+        except httpx.TimeoutException:
+            yield "Agent phản hồi quá chậm. Vui lòng thử lại sau ít phút."
+        except httpx.RequestError as exc:
+            logger.exception("Agent stream request failed")
+            yield f"Không gọi được agent: {exc}"
+
+    return StreamingResponse(generate(), media_type="text/plain; charset=utf-8")

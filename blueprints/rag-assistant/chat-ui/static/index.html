@@ -306,17 +306,38 @@
       const typingEl = appendTyping();
 
       try {
-        const res = await fetch('/api/chat', {
+        const res = await fetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, history: history.slice(0, -1) }),
         });
-        const data = await res.json();
-        const content = data.content || data.error || 'Không nhận được phản hồi.';
-        const isError = !!data.error || res.status >= 400;
-
         typingEl.remove();
-        appendMessage('assistant', content, isError);
+
+        if (!res.body) {
+          const data = await res.json();
+          const content = data.content || data.error || 'Không nhận được phản hồi.';
+          appendMessage('assistant', content, !!data.error || res.status >= 400);
+          history.push({ role: 'assistant', content });
+          return;
+        }
+
+        const assistantEl = appendMessage('assistant', '', res.status >= 400);
+        const bubble = assistantEl.querySelector('.bubble');
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let content = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          content += chunk;
+          bubble.textContent = content;
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        content = content.trim() || 'Không nhận được phản hồi.';
+        bubble.textContent = content;
         history.push({ role: 'assistant', content });
       } catch (err) {
         typingEl.remove();

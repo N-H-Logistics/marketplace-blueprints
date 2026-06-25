@@ -15,7 +15,7 @@ resource "digitalocean_gradientai_agent" "rag_agent" {
   k           = var.agent_k
 
   provide_citations = true
-  retrieval_method  = "RETRIEVAL_METHOD_SUB_QUERIES"
+  retrieval_method  = var.agent_retrieval_method
 }
 
 locals {

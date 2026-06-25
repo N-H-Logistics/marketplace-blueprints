@@ -131,6 +131,12 @@ variable "agent_k" {
   description = "Number of knowledge base documents to retrieve per query."
 }
 
+variable "agent_retrieval_method" {
+  type        = string
+  default     = "RETRIEVAL_METHOD_SUB_QUERIES"
+  description = "Knowledge base retrieval method for the managed agent."
+}
+
 // =============================================================================
 // GUARDRAIL CONFIGURATION
 // =============================================================================
