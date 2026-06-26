@@ -837,6 +837,136 @@
       display: block;
       overflow: visible;
     }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(16,36,62,0.34);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 80;
+    }
+    .modal-backdrop[hidden] { display: none; }
+    .taiga-modal {
+      width: min(680px, 100%);
+      max-height: min(760px, calc(100vh - 40px));
+      overflow-y: auto;
+      border-radius: var(--do-radius-lg);
+      border: 1px solid var(--do-gray-200);
+      background: var(--do-white);
+      box-shadow: 0 22px 60px rgba(13,33,55,0.22);
+    }
+    .taiga-modal-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--do-gray-200);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .taiga-modal-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .taiga-modal-subtitle {
+      margin-top: 4px;
+      color: var(--do-gray-500);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .taiga-modal-close {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: var(--do-white);
+      color: var(--do-gray-700);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .taiga-modal-body {
+      padding: 16px 18px 18px;
+      display: grid;
+      gap: 12px;
+    }
+    .taiga-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .taiga-field {
+      display: grid;
+      gap: 6px;
+    }
+    .taiga-field.full { grid-column: 1 / -1; }
+    .taiga-field label {
+      color: var(--do-gray-700);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .taiga-field input,
+    .taiga-field textarea,
+    .taiga-field select {
+      width: 100%;
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: var(--do-white);
+      color: var(--do-gray-900);
+      font: inherit;
+      font-size: 13px;
+      padding: 10px 11px;
+      outline: none;
+    }
+    .taiga-field textarea {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+    .taiga-field input:focus,
+    .taiga-field textarea:focus,
+    .taiga-field select:focus {
+      border-color: var(--do-blue);
+      box-shadow: 0 0 0 3px rgba(0,105,255,0.12);
+    }
+    .taiga-form-error {
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--do-radius);
+      padding: 9px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .taiga-form-error[hidden] { display: none; }
+    .taiga-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 2px;
+    }
+    .taiga-action {
+      height: 36px;
+      padding: 0 13px;
+      border-radius: var(--do-radius);
+      border: 1px solid var(--do-gray-200);
+      background: var(--do-white);
+      color: var(--do-gray-700);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .taiga-action.primary {
+      background: var(--do-blue);
+      border-color: var(--do-blue);
+      color: var(--do-white);
+    }
+    .taiga-action:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
     @media (max-width: 900px) {
       .chat-container { padding: 16px 12px; }
       .chat-container,
@@ -860,6 +990,7 @@
       .assistant-content { max-width: calc(100vw - 80px); }
       .taiga-summary { grid-template-columns: 1fr; }
       .taiga-answer { min-width: 0; }
+      .taiga-form-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -966,7 +1097,13 @@
             </div>
           </section>
 
-         
+          <section class="prompt-section">
+            <h3>Cần báo lỗi hệ thống?</h3>
+            <p>Tạo issue Taiga sau khi kiểm tra lại tiêu đề, mô tả, mức độ ưu tiên và người phụ trách.</p>
+            <div class="prompt-list">
+              <button class="prompt-btn" onclick="usePrompt(this)">Tạo báo lỗi Taiga</button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -982,6 +1119,55 @@
       </button>
     </div>
     <div class="input-hint" id="inputHint">Nhấn Enter để gửi, Shift+Enter để xuống dòng</div>
+  </div>
+
+  <div class="modal-backdrop" id="taigaIssueModal" hidden>
+    <div class="taiga-modal" role="dialog" aria-modal="true" aria-labelledby="taigaIssueTitle">
+      <div class="taiga-modal-header">
+        <div>
+          <div class="taiga-modal-title" id="taigaIssueTitle">Tạo báo lỗi Taiga</div>
+          <div class="taiga-modal-subtitle">Kiểm tra lại nội dung trước khi tạo issue trên Taiga.</div>
+        </div>
+        <button class="taiga-modal-close" id="taigaIssueClose" type="button" title="Đóng">×</button>
+      </div>
+      <form class="taiga-modal-body" id="taigaIssueForm">
+        <div class="taiga-form-error" id="taigaIssueError" hidden></div>
+        <div class="taiga-form-grid">
+          <div class="taiga-field full">
+            <label for="taigaIssueSubject">Tiêu đề lỗi</label>
+            <input id="taigaIssueSubject" name="subject" type="text" maxlength="500" required>
+          </div>
+          <div class="taiga-field full">
+            <label for="taigaIssueDescription">Mô tả chi tiết</label>
+            <textarea id="taigaIssueDescription" name="description" placeholder="Mô tả hiện tượng, bước tái hiện, mã đơn/SKU/kho liên quan nếu có."></textarea>
+          </div>
+          <div class="taiga-field">
+            <label for="taigaIssueType">Loại</label>
+            <select id="taigaIssueType" name="type"></select>
+          </div>
+          <div class="taiga-field">
+            <label for="taigaIssueStatus">Trạng thái</label>
+            <select id="taigaIssueStatus" name="status"></select>
+          </div>
+          <div class="taiga-field">
+            <label for="taigaIssuePriority">Ưu tiên</label>
+            <select id="taigaIssuePriority" name="priority"></select>
+          </div>
+          <div class="taiga-field">
+            <label for="taigaIssueSeverity">Mức độ</label>
+            <select id="taigaIssueSeverity" name="severity"></select>
+          </div>
+          <div class="taiga-field full">
+            <label for="taigaIssueAssignee">Người phụ trách</label>
+            <select id="taigaIssueAssignee" name="assigned_to"></select>
+          </div>
+        </div>
+        <div class="taiga-modal-actions">
+          <button class="taiga-action" id="taigaIssueCancel" type="button">Hủy</button>
+          <button class="taiga-action primary" id="taigaIssueSubmit" type="submit">Tạo báo lỗi</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -1004,6 +1190,19 @@
     const historyPanelContent = document.getElementById('historyPanelContent');
     const kbOverviewMeta = document.getElementById('kbOverviewMeta');
     const kbOverviewBody = document.getElementById('kbOverviewBody');
+    const taigaIssueModal = document.getElementById('taigaIssueModal');
+    const taigaIssueForm = document.getElementById('taigaIssueForm');
+    const taigaIssueClose = document.getElementById('taigaIssueClose');
+    const taigaIssueCancel = document.getElementById('taigaIssueCancel');
+    const taigaIssueSubmit = document.getElementById('taigaIssueSubmit');
+    const taigaIssueError = document.getElementById('taigaIssueError');
+    const taigaIssueSubject = document.getElementById('taigaIssueSubject');
+    const taigaIssueDescription = document.getElementById('taigaIssueDescription');
+    const taigaIssueType = document.getElementById('taigaIssueType');
+    const taigaIssueStatus = document.getElementById('taigaIssueStatus');
+    const taigaIssuePriority = document.getElementById('taigaIssuePriority');
+    const taigaIssueSeverity = document.getElementById('taigaIssueSeverity');
+    const taigaIssueAssignee = document.getElementById('taigaIssueAssignee');
     const sendIcon = sendBtn.innerHTML;
     const defaultHint = 'Nhấn Enter để gửi, Shift+Enter để xuống dòng';
     const storageKey = 'onflow-rag-chat-history';
@@ -1013,6 +1212,8 @@
     let lastSavedHistoryLength = 0;
     let isComposing = false;
     let isLoading = false;
+    let taigaMetadata = null;
+    let isCreatingTaigaIssue = false;
 
     initializeStoredHistory();
     loadKnowledgeBases();
@@ -1045,6 +1246,9 @@
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
         setSystemMenuOpen(false);
+        if (!taigaIssueModal.hidden && !isCreatingTaigaIssue) {
+          closeTaigaIssueModal();
+        }
       }
     });
     docsTab.addEventListener('click', function() {
@@ -1065,6 +1269,14 @@
       setHistoryPanelOpen(false);
       textarea.focus();
     });
+    taigaIssueClose.addEventListener('click', closeTaigaIssueModal);
+    taigaIssueCancel.addEventListener('click', closeTaigaIssueModal);
+    taigaIssueModal.addEventListener('click', function(e) {
+      if (e.target === taigaIssueModal && !isCreatingTaigaIssue) {
+        closeTaigaIssueModal();
+      }
+    });
+    taigaIssueForm.addEventListener('submit', submitTaigaIssueForm);
 
     function usePrompt(btn) {
       if (isLoading) return;
@@ -1095,6 +1307,170 @@
       systemMenuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
+    function isCreateTaigaIssueIntent(message) {
+      const text = (message || '').toLowerCase();
+      const createWords = ['tạo', 'tao', 'thêm', 'them', 'ghi nhận', 'ghi nhan'];
+      const issueWords = ['báo lỗi', 'bao loi', 'lỗi', 'bug', 'issue', 'ticket'];
+      return createWords.some((word) => text.includes(word)) && issueWords.some((word) => text.includes(word));
+    }
+
+    function extractTaigaIssueSubject(message) {
+      let subject = (message || '').trim();
+      subject = subject
+        .replace(/^(hãy|hay|vui lòng|vui long)\s+/i, '')
+        .replace(/^(tạo|tao|thêm|them|ghi nhận|ghi nhan)\s+/i, '')
+        .replace(/^(một|mot|1)\s+/i, '')
+        .replace(/^(báo lỗi|bao loi|bug|issue|ticket)\s*/i, '')
+        .replace(/^trên\s+taiga\s*/i, '')
+        .replace(/^taiga\s*/i, '')
+        .replace(/^[:：,\-\s]+/, '')
+        .trim();
+      return subject;
+    }
+
+    function setTaigaIssueError(message) {
+      taigaIssueError.hidden = !message;
+      taigaIssueError.textContent = message || '';
+    }
+
+    function setTaigaIssueBusy(busy) {
+      isCreatingTaigaIssue = busy;
+      taigaIssueSubmit.disabled = busy;
+      taigaIssueCancel.disabled = busy;
+      taigaIssueClose.disabled = busy;
+      taigaIssueSubmit.textContent = busy ? 'Đang tạo...' : 'Tạo báo lỗi';
+      Array.from(taigaIssueForm.elements).forEach((el) => {
+        if (el !== taigaIssueCancel && el !== taigaIssueClose) {
+          el.disabled = busy;
+        }
+      });
+    }
+
+    function fillSelect(select, options, selectedId, blankLabel) {
+      select.innerHTML = '';
+      if (blankLabel) {
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = blankLabel;
+        select.appendChild(blank);
+      }
+      (options || []).forEach((option) => {
+        const item = document.createElement('option');
+        item.value = String(option.id);
+        item.textContent = option.username ? `${option.name} (${option.username})` : option.name;
+        if (String(option.id) === String(selectedId || '')) {
+          item.selected = true;
+        }
+        select.appendChild(item);
+      });
+    }
+
+    async function loadTaigaMetadata() {
+      if (taigaMetadata) return taigaMetadata;
+      const res = await fetch('/api/taiga/metadata');
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Không lấy được cấu hình Taiga.');
+      }
+      taigaMetadata = data;
+      return taigaMetadata;
+    }
+
+    async function openTaigaIssueModal(message) {
+      taigaIssueModal.hidden = false;
+      setTaigaIssueError('');
+      taigaIssueSubject.value = extractTaigaIssueSubject(message);
+      taigaIssueDescription.value = '';
+      taigaIssueSubmit.disabled = true;
+      taigaIssueSubmit.textContent = 'Đang tải...';
+
+      try {
+        const metadata = await loadTaigaMetadata();
+        const defaults = metadata.defaults || {};
+        fillSelect(taigaIssueType, metadata.types, defaults.type);
+        fillSelect(taigaIssueStatus, metadata.statuses, defaults.status);
+        fillSelect(taigaIssuePriority, metadata.priorities, defaults.priority);
+        fillSelect(taigaIssueSeverity, metadata.severities, defaults.severity);
+        fillSelect(taigaIssueAssignee, metadata.members, '', 'Chưa gán');
+        taigaIssueSubmit.disabled = false;
+        taigaIssueSubmit.textContent = 'Tạo báo lỗi';
+        taigaIssueSubject.focus();
+        taigaIssueSubject.select();
+      } catch (err) {
+        setTaigaIssueError(err.message);
+        taigaIssueSubmit.textContent = 'Tạo báo lỗi';
+      }
+    }
+
+    function closeTaigaIssueModal() {
+      if (isCreatingTaigaIssue) return;
+      taigaIssueModal.hidden = true;
+      setTaigaIssueError('');
+      taigaIssueForm.reset();
+      textarea.focus();
+    }
+
+    function formatCreatedIssueContent(issue) {
+      const ref = issue.ref ? `#${issue.ref}` : `id ${issue.id}`;
+      const status = issue.status || 'New';
+      const assignee = issue.assigned_to || 'chưa gán';
+      const state = issue.is_closed ? 'đã đóng' : 'đang mở';
+      let content = `Đã tạo báo lỗi Taiga:\n- issue ${ref}: ${issue.subject || ''} | ${status} | ${assignee} | ${state}`;
+      if (issue.url) {
+        content += ` | ${issue.url}`;
+      }
+      if (issue.description) {
+        content += `\n  Chi tiết: ${issue.description}`;
+      }
+      return content;
+    }
+
+    async function submitTaigaIssueForm(e) {
+      e.preventDefault();
+      setTaigaIssueError('');
+
+      const subject = taigaIssueSubject.value.trim();
+      if (!subject) {
+        setTaigaIssueError('Vui lòng nhập tiêu đề báo lỗi.');
+        taigaIssueSubject.focus();
+        return;
+      }
+
+      setTaigaIssueBusy(true);
+      try {
+        const res = await fetch('/api/taiga/issues', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject,
+            description: taigaIssueDescription.value.trim(),
+            type: taigaIssueType.value,
+            status: taigaIssueStatus.value,
+            priority: taigaIssuePriority.value,
+            severity: taigaIssueSeverity.value,
+            assigned_to: taigaIssueAssignee.value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Không tạo được báo lỗi Taiga.');
+        }
+
+        const content = formatCreatedIssueContent(data.issue || {});
+        const assistantEl = appendMessage('assistant', content);
+        showResponseDone(assistantEl);
+        history.push({ role: 'assistant', content });
+        saveNewHistoryMessages();
+        renderHistoryList();
+        setTaigaIssueBusy(false);
+        closeTaigaIssueModal();
+      } catch (err) {
+        setTaigaIssueError(err.message);
+      } finally {
+        setTaigaIssueBusy(false);
+      }
+    }
+
     async function sendMessage() {
       if (isLoading) return;
 
@@ -1109,6 +1485,14 @@
 
       textarea.value = '';
       textarea.style.height = 'auto';
+
+      if (isCreateTaigaIssueIntent(message)) {
+        saveNewHistoryMessages();
+        renderHistoryList();
+        openTaigaIssueModal(message);
+        return;
+      }
+
       setInputLocked(true);
 
       const typingEl = appendTyping();

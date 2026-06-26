@@ -42,6 +42,7 @@ TAIGA_MAX_RESULTS = int(os.environ.get("TAIGA_MAX_RESULTS", "12"))
 AGENT_ENDPOINT = None
 AGENT_API_KEY = None
 TAIGA_PROJECT_CACHE = {}
+TAIGA_METADATA_CACHE = {}
 
 # Serve the static HTML chat page.
 INDEX_HTML = (Path(__file__).parent / "static" / "index.html").read_text()
@@ -166,6 +167,15 @@ def _brief_text(value, limit=180):
     return text[: limit - 1].rstrip() + "..."
 
 
+def _compact_taiga_option(item, label_keys=("name",)):
+    label = ""
+    for key in label_keys:
+        if item.get(key):
+            label = item[key]
+            break
+    return {"id": item.get("id"), "name": label or str(item.get("id", ""))}
+
+
 def _compact_taiga_item(kind, item):
     status = item.get("status_extra_info") or {}
     assignee = item.get("assigned_to_extra_info") or {}
@@ -182,6 +192,112 @@ def _compact_taiga_item(kind, item):
         "created_date": item.get("created_date"),
         "modified_date": item.get("modified_date"),
     }
+
+
+async def _taiga_project_metadata():
+    if not _taiga_configured():
+        return {"configured": False}
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        headers = await _taiga_headers(client)
+        project_id = await _taiga_project_id(client, headers)
+        if not project_id:
+            return {"configured": False, "error": "TAIGA_PROJECT_ID hoặc TAIGA_PROJECT_SLUG chưa được cấu hình."}
+
+        if project_id in TAIGA_METADATA_CACHE:
+            return TAIGA_METADATA_CACHE[project_id]
+
+        resp = await client.get(f"{TAIGA_BASE_URL}/projects/{project_id}", headers=headers)
+        resp.raise_for_status()
+        project = resp.json()
+        metadata = {
+            "configured": True,
+            "project": {
+                "id": project.get("id"),
+                "name": project.get("name"),
+                "slug": project.get("slug"),
+            },
+            "defaults": {
+                "status": project.get("default_issue_status"),
+                "priority": project.get("default_priority"),
+                "severity": project.get("default_severity"),
+                "type": project.get("default_issue_type"),
+            },
+            "statuses": [
+                _compact_taiga_option(item)
+                for item in project.get("issue_statuses", [])
+                if not item.get("is_closed")
+            ],
+            "priorities": [_compact_taiga_option(item) for item in project.get("priorities", [])],
+            "severities": [_compact_taiga_option(item) for item in project.get("severities", [])],
+            "types": [_compact_taiga_option(item) for item in project.get("issue_types", [])],
+            "members": [
+                {
+                    "id": item.get("id"),
+                    "name": item.get("full_name_display") or item.get("full_name") or item.get("username") or str(item.get("id", "")),
+                    "username": item.get("username"),
+                }
+                for item in project.get("members", [])
+            ],
+        }
+        TAIGA_METADATA_CACHE[project_id] = metadata
+        return metadata
+
+
+def _first_option_id(options, default=None):
+    if default:
+        return default
+    if options:
+        return options[0].get("id")
+    return None
+
+
+async def _create_taiga_issue(payload):
+    if not _taiga_configured():
+        return {"configured": False, "error": "Taiga chưa được cấu hình cho trợ lý này."}
+
+    subject = " ".join(str(payload.get("subject") or "").split())
+    if not subject:
+        return {"configured": True, "error": "Tiêu đề báo lỗi là bắt buộc."}
+    if len(subject) > 500:
+        return {"configured": True, "error": "Tiêu đề báo lỗi quá dài."}
+
+    description = str(payload.get("description") or "").strip()
+    metadata = await _taiga_project_metadata()
+    if not metadata.get("configured"):
+        return metadata
+
+    defaults = metadata.get("defaults", {})
+    options = {
+        "status": metadata.get("statuses", []),
+        "priority": metadata.get("priorities", []),
+        "severity": metadata.get("severities", []),
+        "type": metadata.get("types", []),
+    }
+
+    issue_payload = {
+        "project": metadata["project"]["id"],
+        "subject": subject,
+        "description": description,
+        "status": int(payload.get("status") or _first_option_id(options["status"], defaults.get("status"))),
+        "priority": int(payload.get("priority") or _first_option_id(options["priority"], defaults.get("priority"))),
+        "severity": int(payload.get("severity") or _first_option_id(options["severity"], defaults.get("severity"))),
+        "type": int(payload.get("type") or _first_option_id(options["type"], defaults.get("type"))),
+    }
+
+    assigned_to = payload.get("assigned_to")
+    if assigned_to:
+        issue_payload["assigned_to"] = int(assigned_to)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        headers = await _taiga_headers(client)
+        resp = await client.post(f"{TAIGA_BASE_URL}/issues", headers=headers, json=issue_payload)
+        resp.raise_for_status()
+        item = resp.json()
+        if not item.get("project_extra_info"):
+            item["project_extra_info"] = {"slug": metadata["project"].get("slug"), "id": metadata["project"].get("id")}
+
+    return {"configured": True, "issue": _compact_taiga_item("issue", item)}
 
 
 async def _search_taiga(query="", limit=TAIGA_MAX_RESULTS):
@@ -385,6 +501,39 @@ async def taiga_search(q: str = "", limit: int = TAIGA_MAX_RESULTS):
     except (httpx.RequestError, RuntimeError) as exc:
         logger.exception("Taiga search failed")
         return JSONResponse(status_code=502, content={"error": f"Không lấy được dữ liệu Taiga: {exc}"})
+
+
+@app.get("/api/taiga/metadata")
+async def taiga_metadata():
+    """Return Taiga project metadata for creating issues."""
+    try:
+        data = await _taiga_project_metadata()
+        if not data.get("configured"):
+            return JSONResponse(status_code=503, content=data)
+        return data
+    except httpx.HTTPStatusError as exc:
+        logger.exception("Taiga metadata request failed")
+        return JSONResponse(status_code=exc.response.status_code, content={"error": exc.response.text})
+    except (httpx.RequestError, RuntimeError, ValueError) as exc:
+        logger.exception("Taiga metadata request failed")
+        return JSONResponse(status_code=502, content={"error": f"Không lấy được cấu hình Taiga: {exc}"})
+
+
+@app.post("/api/taiga/issues")
+async def create_taiga_issue(request: Request):
+    """Create a Taiga issue after the user confirms the issue form."""
+    try:
+        payload = await request.json()
+        data = await _create_taiga_issue(payload)
+        if data.get("error"):
+            return JSONResponse(status_code=400 if data.get("configured") else 503, content=data)
+        return data
+    except httpx.HTTPStatusError as exc:
+        logger.exception("Taiga issue creation failed")
+        return JSONResponse(status_code=exc.response.status_code, content={"error": exc.response.text})
+    except (httpx.RequestError, RuntimeError, ValueError) as exc:
+        logger.exception("Taiga issue creation failed")
+        return JSONResponse(status_code=502, content={"error": f"Không tạo được báo lỗi Taiga: {exc}"})
 
 
 @app.get("/api/knowledge-bases")
