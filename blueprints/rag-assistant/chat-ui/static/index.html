@@ -138,21 +138,80 @@
       border-radius: var(--do-radius-lg);
       line-height: 1.6;
       font-size: 14px;
-      white-space: pre-wrap;
       word-wrap: break-word;
     }
+    .message.user .bubble { white-space: pre-wrap; }
     .message.user .bubble { background: var(--do-blue); color: white; border-bottom-right-radius: 4px; }
     .message.assistant .bubble { background: var(--do-white); color: var(--do-gray-900); border: 1px solid var(--do-gray-200); border-bottom-left-radius: 4px; box-shadow: var(--do-shadow); }
-    .typing-dots { display: inline-flex; gap: 4px; padding: 4px 0; }
+    .assistant-content { display: flex; flex-direction: column; align-items: flex-start; max-width: 80%; }
+    .assistant-content .bubble { max-width: 100%; }
+    .formatted-answer { display: flex; flex-direction: column; gap: 10px; }
+    .formatted-answer p { margin: 0; }
+    .formatted-answer strong { font-weight: 700; color: var(--do-gray-900); }
+    .formatted-answer em { color: var(--do-gray-700); }
+    .formatted-answer code {
+      background: var(--do-gray-100);
+      border: 1px solid var(--do-gray-200);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    .formatted-answer ol,
+    .formatted-answer ul {
+      margin: 2px 0 2px 22px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .formatted-answer li { padding-left: 4px; }
+    .formatted-answer h3 {
+      margin: 2px 0 0;
+      font-size: 15px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+    .bubble.streaming::after {
+      content: '';
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      margin-left: 3px;
+      background: var(--do-blue);
+      vertical-align: -0.15em;
+      animation: cursorBlink 0.9s steps(2, start) infinite;
+    }
+    @keyframes cursorBlink { 50% { opacity: 0; } }
+    .response-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 6px;
+      color: var(--do-gray-500);
+      font-size: 11px;
+      line-height: 1.3;
+      opacity: 0;
+      transform: translateY(-2px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .response-status.visible { opacity: 1; transform: translateY(0); }
+    .response-status svg { width: 13px; height: 13px; fill: var(--do-green); flex-shrink: 0; }
+    .typing-dots { display: inline-flex; align-items: center; gap: 5px; padding: 5px 2px; }
     .typing-dots span {
-      width: 6px; height: 6px;
-      background: var(--do-gray-300);
+      width: 7px; height: 7px;
+      background: var(--do-gray-500);
       border-radius: 50%;
-      animation: typingBounce 1.2s ease infinite;
+      opacity: 0.35;
+      transform: scale(0.85);
+      animation: typingPulse 1.35s ease-in-out infinite;
     }
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+    @keyframes typingPulse {
+      0%, 80%, 100% { opacity: 0.35; transform: scale(0.85); }
+      40% { opacity: 1; transform: scale(1); }
+    }
     .error-bubble { background: #fef2f2 !important; border-color: #fecaca !important; color: #991b1b !important; }
 
     /* Vùng nhập liệu */
@@ -311,33 +370,58 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, history: history.slice(0, -1) }),
         });
-        typingEl.remove();
-
         if (!res.body) {
+          typingEl.remove();
           const data = await res.json();
           const content = data.content || data.error || 'Không nhận được phản hồi.';
-          appendMessage('assistant', content, !!data.error || res.status >= 400);
+          const assistantEl = appendMessage('assistant', content, !!data.error || res.status >= 400);
+          if (!data.error && res.status < 400) {
+            showResponseDone(assistantEl);
+          }
           history.push({ role: 'assistant', content });
           return;
         }
 
-        const assistantEl = appendMessage('assistant', '', res.status >= 400);
-        const bubble = assistantEl.querySelector('.bubble');
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        let assistantEl = null;
+        let bubble = null;
+        let renderer = null;
         let content = '';
+
+        function ensureAssistantMessage() {
+          if (assistantEl) return;
+          typingEl.remove();
+          assistantEl = appendMessage('assistant', '', res.status >= 400);
+          bubble = assistantEl.querySelector('.bubble');
+          bubble.classList.add('streaming');
+          renderer = createStreamRenderer(bubble);
+        }
 
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
+          if (!chunk) continue;
+          ensureAssistantMessage();
           content += chunk;
-          bubble.textContent = content;
-          chatContainer.scrollTop = chatContainer.scrollHeight;
+          renderer.push(chunk);
+        }
+        const finalChunk = decoder.decode();
+        if (finalChunk) {
+          ensureAssistantMessage();
+          content += finalChunk;
+          renderer.push(finalChunk);
         }
 
         content = content.trim() || 'Không nhận được phản hồi.';
-        bubble.textContent = content;
+        ensureAssistantMessage();
+        await renderer.finish();
+        bubble.classList.remove('streaming');
+        renderFormattedAnswer(bubble, content);
+        if (res.status < 400) {
+          showResponseDone(assistantEl);
+        }
         history.push({ role: 'assistant', content });
       } catch (err) {
         typingEl.remove();
@@ -356,12 +440,202 @@
       avatar.textContent = role === 'user' ? 'Y' : 'AI';
       const bubble = document.createElement('div');
       bubble.className = 'bubble' + (isError ? ' error-bubble' : '');
-      bubble.textContent = text;
+      if (role === 'assistant') {
+        renderFormattedAnswer(bubble, text);
+      } else {
+        bubble.textContent = text;
+      }
       div.appendChild(avatar);
-      div.appendChild(bubble);
+      if (role === 'assistant') {
+        const content = document.createElement('div');
+        content.className = 'assistant-content';
+        content.appendChild(bubble);
+        div.appendChild(content);
+      } else {
+        div.appendChild(bubble);
+      }
       chatInner.appendChild(div);
       chatContainer.scrollTop = chatContainer.scrollHeight;
       return div;
+    }
+
+    function shouldAutoScroll() {
+      const distanceFromBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight;
+      return distanceFromBottom < 120;
+    }
+
+    function scrollToBottom() {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function createStreamRenderer(bubble) {
+      let pending = '';
+      let visible = '';
+      let timerId = null;
+      let isRunning = false;
+      let resolveDone = null;
+
+      function getDelay(char) {
+        if (!char) return 18;
+        if ('.!?'.includes(char)) return 170;
+        if (',;:'.includes(char)) return 90;
+        if (char === '\n') return 120;
+        if (char === ' ') return 18;
+        return 14 + Math.floor(Math.random() * 18);
+      }
+
+      function getBatchSize() {
+        if (pending.length > 600) return 12;
+        if (pending.length > 240) return 8;
+        if (pending.length > 80) return 4;
+        return 1;
+      }
+
+      function renderNext() {
+        if (pending.length === 0) {
+          timerId = null;
+          isRunning = false;
+          if (resolveDone) {
+            resolveDone();
+            resolveDone = null;
+          }
+          return;
+        }
+
+        const batchSize = getBatchSize();
+        const next = pending.slice(0, batchSize);
+        pending = pending.slice(batchSize);
+        visible += next;
+        renderFormattedAnswer(bubble, visible);
+
+        if (shouldAutoScroll()) {
+          scrollToBottom();
+        }
+
+        const lastChar = next[next.length - 1];
+        timerId = setTimeout(() => {
+          requestAnimationFrame(renderNext);
+        }, getDelay(lastChar));
+      }
+
+      function ensureRunning() {
+        if (!isRunning) {
+          isRunning = true;
+          requestAnimationFrame(renderNext);
+        }
+      }
+
+      return {
+        push(chunk) {
+          pending += chunk;
+          ensureRunning();
+        },
+        finish() {
+          if (pending.length === 0 && timerId === null && !isRunning) {
+            return Promise.resolve();
+          }
+          return new Promise((resolve) => {
+            resolveDone = resolve;
+            ensureRunning();
+          });
+        }
+      };
+    }
+
+    function escapeHTML(value) {
+      return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderInlineMarkdown(value) {
+      return escapeHTML(value)
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    }
+
+    function renderFormattedAnswer(bubble, text) {
+      const trimmed = (text || '').trim();
+      if (!trimmed) {
+        bubble.textContent = '';
+        return;
+      }
+
+      const blocks = [];
+      let listType = null;
+      let listItems = [];
+      let paragraphLines = [];
+
+      function flushParagraph() {
+        if (paragraphLines.length === 0) return;
+        blocks.push('<p>' + paragraphLines.map(renderInlineMarkdown).join('<br>') + '</p>');
+        paragraphLines = [];
+      }
+
+      function flushList() {
+        if (!listType) return;
+        blocks.push('<' + listType + '>' + listItems.map((item) => '<li>' + renderInlineMarkdown(item) + '</li>').join('') + '</' + listType + '>');
+        listType = null;
+        listItems = [];
+      }
+
+      trimmed.split('\n').forEach((rawLine) => {
+        const line = rawLine.trim();
+        const ordered = line.match(/^\d+[.)]\s+(.+)$/);
+        const unordered = line.match(/^[-*]\s+(.+)$/);
+        const heading = line.match(/^#{1,3}\s+(.+)$/);
+
+        if (!line) {
+          flushParagraph();
+          flushList();
+          return;
+        }
+
+        if (heading) {
+          flushParagraph();
+          flushList();
+          blocks.push('<h3>' + renderInlineMarkdown(heading[1]) + '</h3>');
+          return;
+        }
+
+        if (ordered || unordered) {
+          const nextType = ordered ? 'ol' : 'ul';
+          flushParagraph();
+          if (listType && listType !== nextType) {
+            flushList();
+          }
+          listType = nextType;
+          listItems.push((ordered || unordered)[1]);
+          return;
+        }
+
+        flushList();
+        paragraphLines.push(line);
+      });
+
+      flushParagraph();
+      flushList();
+      bubble.innerHTML = '<div class="formatted-answer">' + blocks.join('') + '</div>';
+    }
+
+    function showResponseDone(messageEl) {
+      const content = messageEl.querySelector('.assistant-content');
+      if (!content) return;
+
+      const status = document.createElement('div');
+      status.className = 'response-status';
+      status.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.6 13.8 3.8 10l-1.2 1.2 5 5 9.8-9.8-1.2-1.2z"/></svg><span>Đã trả lời xong</span>';
+      content.appendChild(status);
+      requestAnimationFrame(() => {
+        status.classList.add('visible');
+        if (shouldAutoScroll()) {
+          scrollToBottom();
+        }
+      });
     }
 
     function appendTyping() {
