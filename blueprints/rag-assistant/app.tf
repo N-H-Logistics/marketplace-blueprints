@@ -8,6 +8,19 @@ resource "digitalocean_app" "chat_ui" {
     name   = "${local.resource_name}-chat"
     region = var.region
 
+    domain {
+      domain = "ai.onflow.vn"
+      type   = "PRIMARY"
+    }
+
+    database {
+      name         = "genai-seahorse"
+      engine       = "OPENSEARCH"
+      version      = "2.19"
+      production   = true
+      cluster_name = "genai-seahorse"
+    }
+
     ingress {
       rule {
         component {
@@ -51,6 +64,12 @@ resource "digitalocean_app" "chat_ui" {
       env {
         key   = "AGENT_NAME"
         value = local.active_agent_name
+        scope = "RUN_TIME"
+      }
+
+      env {
+        key   = "DATABASE_URL"
+        value = "$${genai-seahorse.DATABASE_URL}"
         scope = "RUN_TIME"
       }
     }
