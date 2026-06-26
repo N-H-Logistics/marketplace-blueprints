@@ -30,10 +30,18 @@ AGENT_UUID = os.environ["AGENT_UUID"]
 DO_API_TOKEN = os.environ["DO_API_TOKEN"]
 AGENT_NAME = os.environ.get("AGENT_NAME", "RAG Assistant")
 DO_API_BASE = os.environ.get("DO_API_BASE", "https://api.digitalocean.com")
+TAIGA_BASE_URL = os.environ.get("TAIGA_BASE_URL", "").rstrip("/")
+TAIGA_USERNAME = os.environ.get("TAIGA_USERNAME", "")
+TAIGA_PASSWORD = os.environ.get("TAIGA_PASSWORD", "")
+TAIGA_AUTH_TOKEN = os.environ.get("TAIGA_AUTH_TOKEN", "")
+TAIGA_PROJECT_ID = os.environ.get("TAIGA_PROJECT_ID", "")
+TAIGA_PROJECT_SLUG = os.environ.get("TAIGA_PROJECT_SLUG", "")
+TAIGA_MAX_RESULTS = int(os.environ.get("TAIGA_MAX_RESULTS", "12"))
 
 # Populated at startup.
 AGENT_ENDPOINT = None
 AGENT_API_KEY = None
+TAIGA_PROJECT_CACHE = {}
 
 # Serve the static HTML chat page.
 INDEX_HTML = (Path(__file__).parent / "static" / "index.html").read_text()
@@ -41,6 +49,133 @@ INDEX_HTML = (Path(__file__).parent / "static" / "index.html").read_text()
 
 def _do_headers():
     return {"Authorization": f"Bearer {DO_API_TOKEN}", "Content-Type": "application/json"}
+
+
+def _taiga_configured():
+    return bool(TAIGA_BASE_URL and (TAIGA_AUTH_TOKEN or (TAIGA_USERNAME and TAIGA_PASSWORD)))
+
+
+def _taiga_question(message):
+    lowered = (message or "").lower()
+    keywords = (
+        "taiga",
+        "ticket",
+        "issue",
+        "bug",
+        "task",
+        "user story",
+        "story",
+        "sprint",
+        "backlog",
+        "kanban",
+        "trạng thái",
+        "công việc",
+        "đầu việc",
+    )
+    return any(keyword in lowered for keyword in keywords)
+
+
+async def _taiga_headers(client):
+    base_headers = {"Content-Type": "application/json", "User-Agent": "Onflow-RAG-Assistant/1.0"}
+    if TAIGA_AUTH_TOKEN:
+        token = TAIGA_AUTH_TOKEN
+    else:
+        auth_resp = await client.post(
+            f"{TAIGA_BASE_URL}/auth",
+            headers=base_headers,
+            json={"type": "normal", "username": TAIGA_USERNAME, "password": TAIGA_PASSWORD},
+        )
+        auth_resp.raise_for_status()
+        token = auth_resp.json().get("auth_token")
+        if not token:
+            raise RuntimeError("Taiga auth did not return auth_token")
+
+    return {**base_headers, "Authorization": f"Bearer {token}"}
+
+
+async def _taiga_project_id(client, headers):
+    if TAIGA_PROJECT_ID:
+        return TAIGA_PROJECT_ID
+    if not TAIGA_PROJECT_SLUG:
+        return ""
+    if TAIGA_PROJECT_SLUG in TAIGA_PROJECT_CACHE:
+        return TAIGA_PROJECT_CACHE[TAIGA_PROJECT_SLUG]
+
+    resp = await client.get(f"{TAIGA_BASE_URL}/projects/by_slug", headers=headers, params={"slug": TAIGA_PROJECT_SLUG})
+    resp.raise_for_status()
+    project_id = str(resp.json().get("id", ""))
+    TAIGA_PROJECT_CACHE[TAIGA_PROJECT_SLUG] = project_id
+    return project_id
+
+
+def _matches_query(item, query):
+    if not query:
+        return True
+    haystack = " ".join(
+        str(item.get(key, ""))
+        for key in ("subject", "ref", "description", "status_extra_info", "assigned_to_extra_info")
+    ).lower()
+    return query.lower() in haystack
+
+
+def _compact_taiga_item(kind, item):
+    status = item.get("status_extra_info") or {}
+    assignee = item.get("assigned_to_extra_info") or {}
+    return {
+        "type": kind,
+        "id": item.get("id"),
+        "ref": item.get("ref"),
+        "subject": item.get("subject", ""),
+        "status": status.get("name") if isinstance(status, dict) else None,
+        "assigned_to": assignee.get("full_name_display") if isinstance(assignee, dict) else None,
+        "is_closed": item.get("is_closed"),
+        "created_date": item.get("created_date"),
+        "modified_date": item.get("modified_date"),
+    }
+
+
+async def _search_taiga(query="", limit=TAIGA_MAX_RESULTS):
+    if not _taiga_configured():
+        return {"configured": False, "items": []}
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        headers = await _taiga_headers(client)
+        project_id = await _taiga_project_id(client, headers)
+        if not project_id:
+            return {"configured": False, "error": "TAIGA_PROJECT_ID hoặc TAIGA_PROJECT_SLUG chưa được cấu hình.", "items": []}
+
+        endpoints = (("issue", "issues"), ("task", "tasks"), ("user_story", "userstories"))
+        items = []
+        for kind, endpoint in endpoints:
+            resp = await client.get(
+                f"{TAIGA_BASE_URL}/{endpoint}",
+                headers=headers,
+                params={"project": project_id, "q": query, "order_by": "-modified_date"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if not isinstance(data, list):
+                continue
+            for item in data:
+                if _matches_query(item, query):
+                    items.append(_compact_taiga_item(kind, item))
+
+        items.sort(key=lambda item: item.get("modified_date") or item.get("created_date") or "", reverse=True)
+        return {"configured": True, "project_id": project_id, "items": items[:limit]}
+
+
+def _format_taiga_context(items):
+    if not items:
+        return ""
+
+    lines = ["Dữ liệu realtime từ Taiga:"]
+    for item in items:
+        ref = f"#{item['ref']}" if item.get("ref") else f"id {item.get('id')}"
+        status = item.get("status") or "chưa rõ trạng thái"
+        assignee = item.get("assigned_to") or "chưa gán người phụ trách"
+        closed = "đã đóng" if item.get("is_closed") else "đang mở"
+        lines.append(f"- {item['type']} {ref}: {item.get('subject', '')} | {status} | {assignee} | {closed}")
+    return "\n".join(lines)
 
 
 def _discover_agent():
@@ -114,6 +249,19 @@ async def health():
     return {"status": "ok", "agent_ready": AGENT_ENDPOINT is not None}
 
 
+@app.get("/api/taiga/search")
+async def taiga_search(q: str = "", limit: int = TAIGA_MAX_RESULTS):
+    """Search Taiga issues, tasks, and user stories through the backend."""
+    try:
+        return await _search_taiga(q, max(1, min(limit, 50)))
+    except httpx.HTTPStatusError as exc:
+        logger.exception("Taiga search failed")
+        return JSONResponse(status_code=exc.response.status_code, content={"error": exc.response.text})
+    except (httpx.RequestError, RuntimeError) as exc:
+        logger.exception("Taiga search failed")
+        return JSONResponse(status_code=502, content={"error": f"Không lấy được dữ liệu Taiga: {exc}"})
+
+
 @app.get("/api/knowledge-bases")
 async def knowledge_bases():
     """Return attached knowledge base metadata and data sources for the UI."""
@@ -182,6 +330,33 @@ async def knowledge_bases():
     return {"knowledge_bases": result}
 
 
+async def _build_chat_messages(message, history):
+    messages = []
+    for h in history:
+        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+
+    if _taiga_question(message):
+        try:
+            taiga_result = await _search_taiga(message, TAIGA_MAX_RESULTS)
+            taiga_context = _format_taiga_context(taiga_result.get("items", []))
+            if taiga_context:
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            "Nếu câu hỏi liên quan Taiga, hãy dùng dữ liệu realtime dưới đây. "
+                            "Trả lời ngắn gọn bằng tiếng Việt, không tự bịa thêm trạng thái.\n\n"
+                            f"{taiga_context}"
+                        ),
+                    }
+                )
+        except Exception:
+            logger.exception("Could not enrich chat with Taiga context")
+
+    messages.append({"role": "user", "content": message})
+    return messages
+
+
 @app.post("/api/chat")
 async def chat(request: Request):
     """Proxy a chat message to the managed agent and return the response."""
@@ -192,11 +367,7 @@ async def chat(request: Request):
     message = body.get("message", "")
     history = body.get("history", [])
 
-    # Build OpenAI-compatible messages array.
-    messages = []
-    for h in history:
-        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
-    messages.append({"role": "user", "content": message})
+    messages = await _build_chat_messages(message, history)
 
     headers = {
         "Authorization": f"Bearer {AGENT_API_KEY}",
@@ -250,10 +421,7 @@ async def chat_stream(request: Request):
     message = body.get("message", "")
     history = body.get("history", [])
 
-    messages = []
-    for h in history:
-        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
-    messages.append({"role": "user", "content": message})
+    messages = await _build_chat_messages(message, history)
 
     headers = {
         "Authorization": f"Bearer {AGENT_API_KEY}",

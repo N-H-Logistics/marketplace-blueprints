@@ -72,6 +72,44 @@ resource "digitalocean_app" "chat_ui" {
         value = "$${genai-seahorse.DATABASE_URL}"
         scope = "RUN_TIME"
       }
+
+      env {
+        key   = "TAIGA_BASE_URL"
+        value = var.taiga_base_url
+        scope = "RUN_TIME"
+      }
+
+      env {
+        key   = "TAIGA_USERNAME"
+        value = var.taiga_username
+        scope = "RUN_TIME"
+      }
+
+      env {
+        key   = "TAIGA_PASSWORD"
+        value = var.taiga_password
+        scope = "RUN_TIME"
+        type  = "SECRET"
+      }
+
+      env {
+        key   = "TAIGA_AUTH_TOKEN"
+        value = var.taiga_auth_token
+        scope = "RUN_TIME"
+        type  = "SECRET"
+      }
+
+      env {
+        key   = "TAIGA_PROJECT_ID"
+        value = var.taiga_project_id
+        scope = "RUN_TIME"
+      }
+
+      env {
+        key   = "TAIGA_PROJECT_SLUG"
+        value = var.taiga_project_slug
+        scope = "RUN_TIME"
+      }
     }
   }
 }

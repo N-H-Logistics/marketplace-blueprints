@@ -77,6 +77,12 @@ Use the chat interface to ask questions. The assistant will search your knowledg
 | `embedding_model` | `qwen3-embedding-0.6b` | Embedding model name |
 | `embedding_model_uuid` | *(required)* | UUID of the embedding model (resolved by do-terraform) |
 | `app_instance_size` | `apps-s-1vcpu-1gb` | App Platform instance size slug |
+| `taiga_base_url` | `""` | Taiga API base URL, e.g. `https://api.taiga.io/api/v1`; empty disables Taiga integration |
+| `taiga_username` | `""` | Taiga username for API authentication |
+| `taiga_password` | `""` | Taiga password for API authentication |
+| `taiga_auth_token` | `""` | Optional Taiga auth token used instead of username/password |
+| `taiga_project_id` | `""` | Taiga project ID to search |
+| `taiga_project_slug` | `""` | Taiga project slug used when project ID is not set |
 | `agent_instruction` | *(see variables.tf)* | System instruction for the agent |
 | `agent_temperature` | `0` | Inference temperature (0 = deterministic) |
 | `agent_max_tokens` | `4096` | Maximum tokens in the agent response |
@@ -116,6 +122,7 @@ The chat UI is a lightweight FastAPI application located in `chat-ui/`. It:
 - Proxies messages to the managed agent's OpenAI-compatible chat completions endpoint.
 - Auto-discovers the agent's deployment URL and creates an API key on startup.
 - Maintains conversation history for multi-turn interactions.
+- Optionally enriches answers with realtime Taiga issues, tasks, and user stories when Taiga variables are configured.
 
 ### Local development
 

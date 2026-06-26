@@ -91,6 +91,44 @@ variable "_app_source_branch" {
   description = "Git branch for the app source code."
 }
 
+variable "taiga_base_url" {
+  type        = string
+  default     = ""
+  description = "Taiga API base URL, for example https://api.taiga.io/api/v1. Leave empty to disable Taiga integration."
+}
+
+variable "taiga_username" {
+  type        = string
+  default     = ""
+  description = "Taiga username for API authentication."
+}
+
+variable "taiga_password" {
+  type        = string
+  default     = ""
+  description = "Taiga password for API authentication."
+  sensitive   = true
+}
+
+variable "taiga_auth_token" {
+  type        = string
+  default     = ""
+  description = "Optional Taiga auth token. When set, it is used instead of username/password."
+  sensitive   = true
+}
+
+variable "taiga_project_id" {
+  type        = string
+  default     = ""
+  description = "Taiga project ID to search. Preferred when known."
+}
+
+variable "taiga_project_slug" {
+  type        = string
+  default     = ""
+  description = "Taiga project slug to resolve when project ID is not provided."
+}
+
 // =============================================================================
 // AGENT CONFIGURATION
 // =============================================================================
