@@ -68,6 +68,12 @@ def _taiga_question(message):
         "sprint",
         "backlog",
         "kanban",
+        "lỗi",
+        "pending",
+        "hoàn tất",
+        "chưa xử lý",
+        "chưa hoàn tất",
+        "chưa gán",
         "trạng thái",
         "công việc",
         "đầu việc",
@@ -118,6 +124,24 @@ def _matches_query(item, query):
     return query.lower() in haystack
 
 
+def _taiga_search_term(query):
+    lowered = (query or "").lower()
+    business_terms = ("oms", "wms", "pvm", "spx", "tiktok", "shopee", "lazada", "pos")
+    for term in business_terms:
+        if term in lowered:
+            return term.upper()
+
+    words = [word.strip("#:,.!?()[]") for word in lowered.split()]
+    refs = [word for word in words if word.isdigit() and len(word) >= 2]
+    if refs:
+        return refs[0]
+
+    if 0 < len(words) <= 3 and not any(word in words for word in ("taiga", "task", "issue", "lỗi")):
+        return query
+
+    return ""
+
+
 def _compact_taiga_item(kind, item):
     status = item.get("status_extra_info") or {}
     assignee = item.get("assigned_to_extra_info") or {}
@@ -144,24 +168,93 @@ async def _search_taiga(query="", limit=TAIGA_MAX_RESULTS):
         if not project_id:
             return {"configured": False, "error": "TAIGA_PROJECT_ID hoặc TAIGA_PROJECT_SLUG chưa được cấu hình.", "items": []}
 
+        search_term = _taiga_search_term(query)
         endpoints = (("issue", "issues"), ("task", "tasks"), ("user_story", "userstories"))
         items = []
+        page_size = min(max(limit, 1), 100)
         for kind, endpoint in endpoints:
-            resp = await client.get(
-                f"{TAIGA_BASE_URL}/{endpoint}",
-                headers=headers,
-                params={"project": project_id, "q": query, "order_by": "-modified_date"},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            if not isinstance(data, list):
-                continue
-            for item in data:
-                if _matches_query(item, query):
-                    items.append(_compact_taiga_item(kind, item))
+            page = 1
+            endpoint_items = 0
+            while endpoint_items < limit:
+                params = {"project": project_id, "order_by": "-modified_date", "page": page, "page_size": page_size}
+                if search_term:
+                    params["q"] = search_term
+                resp = await client.get(
+                    f"{TAIGA_BASE_URL}/{endpoint}",
+                    headers=headers,
+                    params=params,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if not isinstance(data, list) or not data:
+                    break
+                for item in data:
+                    if _matches_query(item, search_term):
+                        items.append(_compact_taiga_item(kind, item))
+                        endpoint_items += 1
+                        if endpoint_items >= limit:
+                            break
+                if len(data) < page_size:
+                    break
+                page += 1
 
         items.sort(key=lambda item: item.get("modified_date") or item.get("created_date") or "", reverse=True)
         return {"configured": True, "project_id": project_id, "items": items[:limit]}
+
+
+def _filter_taiga_items_for_question(message, items):
+    lowered = (message or "").lower()
+    filtered = list(items)
+
+    if any(word in lowered for word in ("issue", "bug", "lỗi")):
+        filtered = [item for item in filtered if item.get("type") == "issue"]
+    elif "story" in lowered:
+        filtered = [item for item in filtered if item.get("type") == "user_story"]
+
+    if any(word in lowered for word in ("chưa xử lý", "pending", "chưa hoàn tất", "đang mở", "open")):
+        filtered = [item for item in filtered if not item.get("is_closed")]
+
+    return filtered
+
+
+def _format_taiga_item_line(item):
+    ref = f"#{item['ref']}" if item.get("ref") else f"id {item.get('id')}"
+    status = item.get("status") or "chưa rõ trạng thái"
+    assignee = item.get("assigned_to") or "chưa gán"
+    closed = "đã đóng" if item.get("is_closed") else "đang mở"
+    return f"- {item['type']} {ref}: {item.get('subject', '')} | {status} | {assignee} | {closed}"
+
+
+def _format_taiga_direct_answer(message, result):
+    if not result.get("configured"):
+        return "Taiga chưa được cấu hình cho trợ lý này."
+
+    items = _filter_taiga_items_for_question(message, result.get("items", []))
+    lowered = (message or "").lower()
+    if not items:
+        return "Không tìm thấy dữ liệu Taiga phù hợp với câu hỏi này."
+
+    if any(word in lowered for word in ("bao nhiêu", "số lượng", "count", "mấy")):
+        open_count = sum(1 for item in items if not item.get("is_closed"))
+        closed_count = len(items) - open_count
+        return f"Trong dữ liệu Taiga tìm được có {len(items)} mục phù hợp: {open_count} đang mở/chưa hoàn tất và {closed_count} đã đóng."
+
+    title = "Các mục Taiga phù hợp gần đây:"
+    if any(word in lowered for word in ("mới cập nhật", "gần đây", "recent")):
+        title = "Các mục Taiga mới cập nhật gần đây:"
+    elif any(word in lowered for word in ("pending", "chưa xử lý", "chưa hoàn tất")):
+        title = "Các mục Taiga đang mở/chưa hoàn tất:"
+
+    lines = [title]
+    lines.extend(_format_taiga_item_line(item) for item in items[:8])
+    if len(items) > 8:
+        lines.append(f"Còn {len(items) - 8} mục khác.")
+    return "\n".join(lines)
+
+
+async def _answer_taiga_question(message):
+    result = await _search_taiga(message, 300)
+    return _format_taiga_direct_answer(message, result)
 
 
 def _format_taiga_context(items):
@@ -367,6 +460,14 @@ async def chat(request: Request):
     message = body.get("message", "")
     history = body.get("history", [])
 
+    if _taiga_question(message):
+        try:
+            content = await _answer_taiga_question(message)
+            return JSONResponse(content={"content": content, "usage": None})
+        except Exception as exc:
+            logger.exception("Taiga direct answer failed")
+            return JSONResponse(status_code=502, content={"error": f"Không lấy được dữ liệu Taiga: {exc}"})
+
     messages = await _build_chat_messages(message, history)
 
     headers = {
@@ -420,6 +521,16 @@ async def chat_stream(request: Request):
     body = await request.json()
     message = body.get("message", "")
     history = body.get("history", [])
+
+    if _taiga_question(message):
+        async def generate_taiga():
+            try:
+                yield await _answer_taiga_question(message)
+            except Exception as exc:
+                logger.exception("Taiga direct stream answer failed")
+                yield f"Không lấy được dữ liệu Taiga: {exc}"
+
+        return StreamingResponse(generate_taiga(), media_type="text/plain; charset=utf-8")
 
     messages = await _build_chat_messages(message, history)
 
