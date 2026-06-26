@@ -117,6 +117,12 @@
       width: 100%;
     }
     .prompt-btn:hover { border-color: var(--do-blue); color: var(--do-blue); background: var(--do-blue-light); }
+    .prompt-btn:disabled {
+      background: var(--do-gray-100);
+      border-color: var(--do-gray-200);
+      color: var(--do-gray-500);
+      cursor: not-allowed;
+    }
 
     /* Tin nhắn */
     .message { margin-bottom: 20px; display: flex; gap: 12px; animation: fadeIn 0.2s ease; }
@@ -233,6 +239,11 @@
       max-height: 120px;
     }
     textarea:focus { border-color: var(--do-blue); box-shadow: 0 0 0 3px rgba(0,105,255,0.1); }
+    textarea:disabled {
+      background: var(--do-gray-100);
+      color: var(--do-gray-500);
+      cursor: not-allowed;
+    }
     textarea::placeholder { color: var(--do-gray-300); }
     .send-btn {
       width: 42px; height: 42px;
@@ -325,6 +336,7 @@
     const sendBtn = document.getElementById('send');
     let history = [];
     let isComposing = false;
+    let isLoading = false;
 
     textarea.addEventListener('input', function() {
       this.style.height = 'auto';
@@ -344,12 +356,25 @@
     });
 
     function usePrompt(btn) {
+      if (isLoading) return;
       textarea.value = btn.textContent;
       textarea.focus();
       sendMessage();
     }
 
+    function setInputLocked(locked) {
+      isLoading = locked;
+      textarea.disabled = locked;
+      sendBtn.disabled = locked;
+      document.querySelectorAll('.prompt-btn').forEach((btn) => {
+        btn.disabled = locked;
+      });
+      textarea.placeholder = locked ? 'Đang chờ AI trả lời xong...' : 'Hỏi về tài liệu của bạn...';
+    }
+
     async function sendMessage() {
+      if (isLoading) return;
+
       const message = textarea.value.trim();
       if (!message) return;
 
@@ -361,7 +386,7 @@
 
       textarea.value = '';
       textarea.style.height = 'auto';
-      sendBtn.disabled = true;
+      setInputLocked(true);
 
       const typingEl = appendTyping();
 
@@ -427,10 +452,10 @@
       } catch (err) {
         typingEl.remove();
         appendMessage('assistant', 'Lỗi kết nối: ' + err.message, true);
+      } finally {
+        setInputLocked(false);
+        textarea.focus();
       }
-
-      sendBtn.disabled = false;
-      textarea.focus();
     }
 
     function appendMessage(role, text, isError) {
