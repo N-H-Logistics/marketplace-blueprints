@@ -61,7 +61,7 @@
     .chat-inner { max-width: 720px; margin: 0 auto; }
 
     /* Trạng thái chưa có tin nhắn */
-    .empty-state { text-align: center; padding-top: 10vh; }
+    .empty-state { padding-top: 8vh; }
     .empty-icon {
       width: 64px; height: 64px;
       background: linear-gradient(135deg, #ff8a18, #ffc400);
@@ -71,51 +71,50 @@
       box-shadow: 0 4px 16px rgba(255,138,24,0.28);
     }
     .empty-icon svg { width: 42px; height: 42px; fill: white; }
+    .empty-header { text-align: center; margin-bottom: 24px; }
     .empty-state h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-    .empty-state p { color: var(--do-gray-500); font-size: 14px; line-height: 1.6; max-width: 480px; margin: 0 auto 24px; }
-
-    /* Các bước bắt đầu */
-    .steps {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-    }
-    .step {
-      background: var(--do-white);
-      border: 1px solid var(--do-gray-200);
-      border-radius: var(--do-radius-lg);
-      padding: 14px 18px;
-      text-align: left;
-      width: 200px;
-      box-shadow: var(--do-shadow);
-    }
-    .step-num {
-      width: 22px; height: 22px;
-      background: var(--do-blue-light);
-      color: var(--do-blue);
-      border-radius: 50%;
-      font-size: 11px; font-weight: 700;
-      display: inline-flex; align-items: center; justify-content: center;
-      margin-bottom: 8px;
-    }
-    .step h4 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-    .step p { font-size: 12px; color: var(--do-gray-500); line-height: 1.4; }
+    .empty-state p { color: var(--do-gray-500); font-size: 14px; line-height: 1.6; max-width: 520px; margin: 0 auto; }
 
     /* Câu hỏi gợi ý */
-    .prompts-label { font-size: 12px; font-weight: 600; color: var(--do-gray-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-    .prompts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto; }
+    .prompt-sections {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 auto;
+      max-width: 720px;
+    }
+    .prompt-section {
+      background: var(--do-white);
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      box-shadow: var(--do-shadow);
+      padding: 14px;
+    }
+    .prompt-section h3 {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .prompt-section p {
+      color: var(--do-gray-500);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+    .prompt-list { display: flex; flex-direction: column; gap: 8px; }
     .prompt-btn {
       background: var(--do-white);
       border: 1px solid var(--do-gray-200);
-      border-radius: 20px;
-      padding: 8px 16px;
+      border-radius: var(--do-radius);
+      padding: 9px 10px;
       font-size: 13px;
       color: var(--do-gray-700);
       cursor: pointer;
       transition: all 0.15s;
       font-family: inherit;
+      line-height: 1.35;
+      text-align: left;
+      width: 100%;
     }
     .prompt-btn:hover { border-color: var(--do-blue); color: var(--do-blue); background: var(--do-blue-light); }
 
@@ -250,6 +249,10 @@
     .send-btn:disabled { background: var(--do-gray-200); cursor: not-allowed; }
     .send-btn svg { width: 18px; height: 18px; fill: currentColor; }
     .input-hint { font-size: 11px; color: var(--do-gray-300); margin-top: 6px; text-align: center; }
+    @media (max-width: 720px) {
+      .prompt-sections { grid-template-columns: 1fr; }
+      .empty-state { padding-top: 4vh; }
+    }
   </style>
 </head>
 <body>
@@ -267,39 +270,37 @@
   <div class="chat-container" id="chat">
     <div class="chat-inner" id="chatInner">
       <div class="empty-state" id="empty">
-        <div class="empty-icon">
-          <svg viewBox="0 0 512 512" aria-hidden="true">
-            <path d="M151 116c9-16 24-16 33 0l68 122c7 12 7 24 0 36l-68 122c-9 16-24 16-33 0L77 274c-7-12-7-24 0-36l74-122z"/>
-            <path d="M178 90h148c28 0 45 10 59 35l61 113c7 12 7 24 0 36l-61 113c-14 25-31 35-59 35H178c24-16 38-33 52-58l47-84c10-17 10-31 0-48l-47-84c-14-25-28-42-52-58z"/>
-          </svg>
-        </div>
-        <h2>Chào mừng đến với trợ lý RAG - Onflow.vn</h2>
-        <p>Trợ lý này trả lời câu hỏi dựa trên tài liệu trong kho tri thức của bạn. Hãy tải tài liệu lên, rồi đặt bất kỳ câu hỏi nào.</p>
-
-        <div class="steps">
-          <div class="step">
-            <div class="step-num">1</div>
-            <h4>Tải tài liệu lên</h4>
-            <p>Tải các tài liệu như PDF, Word, Markdown hoặc văn bản vào kho tri thức để AI sử dụng làm nguồn tham chiếu khi trả lời câu hỏi.</p>
+        <div class="empty-header">
+          <div class="empty-icon">
+            <svg viewBox="0 0 512 512" aria-hidden="true">
+              <path d="M151 116c9-16 24-16 33 0l68 122c7 12 7 24 0 36l-68 122c-9 16-24 16-33 0L77 274c-7-12-7-24 0-36l74-122z"/>
+              <path d="M178 90h148c28 0 45 10 59 35l61 113c7 12 7 24 0 36l-61 113c-14 25-31 35-59 35H178c24-16 38-33 52-58l47-84c10-17 10-31 0-48l-47-84c-14-25-28-42-52-58z"/>
+            </svg>
           </div>
-          <div class="step">
-            <div class="step-num">2</div>
-            <h4>Đặt câu hỏi</h4>
-            <p>Nhập câu hỏi bên dưới, trợ lý sẽ tìm trong tài liệu để trả lời.</p>
-          </div>
-          <div class="step">
-            <div class="step-num">3</div>
-            <h4>Nhận câu trả lời</h4>
-            <p>Câu trả lời được dựa trên tài liệu của bạn và có trích dẫn khi khả dụng.</p>
-          </div>
+          <h2>Trợ lý tri thức Onflow.vn</h2>
+          <p>Chọn đúng nhóm câu hỏi hoặc nhập trực tiếp nội dung cần tra cứu. Trợ lý sẽ ưu tiên trả lời dựa trên kho tri thức đã cấu hình.</p>
         </div>
 
-        <div class="prompts-label">Gợi ý câu hỏi</div>
-        <div class="prompts">
-          <button class="prompt-btn" onclick="usePrompt(this)">Tài liệu của tôi đang bao gồm những chủ đề nào?</button>
-          <button class="prompt-btn" onclick="usePrompt(this)">Tóm tắt các ý chính trong kho tri thức của tôi</button>
-          <button class="prompt-btn" onclick="usePrompt(this)">Điều quan trọng nhất cần biết là gì?</button>
-          <button class="prompt-btn" onclick="usePrompt(this)">Giúp tôi tìm thông tin về...</button>
+        <div class="prompt-sections">
+          <section class="prompt-section">
+            <h3>Nội bộ</h3>
+            <p>Chính sách, thông báo, quy định và thông tin vận hành trong công ty.</p>
+            <div class="prompt-list">
+              <button class="prompt-btn" onclick="usePrompt(this)">Tóm tắt các chính sách nội bộ quan trọng</button>
+              <button class="prompt-btn" onclick="usePrompt(this)">Tôi cần tìm quy định liên quan đến nhân sự</button>
+            </div>
+          </section>
+
+          <section class="prompt-section">
+            <h3>Quy trình</h3>
+            <p>Các bước thực hiện, biểu mẫu, điều kiện áp dụng và điểm cần kiểm tra.</p>
+            <div class="prompt-list">
+              <button class="prompt-btn" onclick="usePrompt(this)">Hướng dẫn quy trình xử lý một yêu cầu mới</button>
+              <button class="prompt-btn" onclick="usePrompt(this)">Quy trình này cần những biểu mẫu nào?</button>
+            </div>
+          </section>
+
+         
         </div>
       </div>
     </div>
