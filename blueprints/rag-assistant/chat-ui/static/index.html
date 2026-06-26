@@ -417,6 +417,140 @@
       line-height: 1.4;
       font-weight: 700;
     }
+    .taiga-answer {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: min(720px, 100%);
+    }
+    .taiga-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .taiga-stat {
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: #fbfcfe;
+      padding: 10px;
+      min-width: 0;
+    }
+    .taiga-stat-value {
+      font-size: 20px;
+      line-height: 1.1;
+      font-weight: 800;
+      color: var(--do-gray-900);
+    }
+    .taiga-stat-label {
+      margin-top: 3px;
+      color: var(--do-gray-500);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .taiga-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .taiga-card {
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: #fbfcfe;
+      padding: 11px 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .taiga-card-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      min-width: 0;
+    }
+    .taiga-ref {
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 6px;
+      background: var(--do-blue-light);
+      color: var(--do-blue);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .taiga-title {
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 700;
+      color: var(--do-gray-900);
+    }
+    .taiga-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .taiga-description {
+      color: var(--do-gray-700);
+      font-size: 12px;
+      line-height: 1.45;
+      margin: -2px 0 0;
+    }
+    .taiga-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .taiga-link {
+      height: 28px;
+      padding: 0 9px;
+      border-radius: 6px;
+      background: var(--do-white);
+      border: 1px solid var(--do-gray-200);
+      color: var(--do-blue);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .taiga-link:hover {
+      background: var(--do-blue-light);
+      border-color: rgba(0,105,255,0.28);
+    }
+    .taiga-link svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+    .taiga-pill {
+      min-height: 22px;
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: var(--do-white);
+      border: 1px solid var(--do-gray-200);
+      color: var(--do-gray-700);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .taiga-pill.status-open { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; }
+    .taiga-pill.status-progress { border-color: #fed7aa; color: #b45309; background: #fff7ed; }
+    .taiga-pill.status-done { border-color: #bbf7d0; color: #15803d; background: #f0fdf4; }
+    .taiga-pill.status-reject { border-color: #fecaca; color: #b91c1c; background: #fef2f2; }
+    .taiga-more {
+      color: var(--do-gray-500);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 1px 0;
+    }
     .bubble.streaming::after {
       content: '';
       display: inline-block;
@@ -724,6 +858,8 @@
       .header-badge { display: none; }
       .bubble,
       .assistant-content { max-width: calc(100vw - 80px); }
+      .taiga-summary { grid-template-columns: 1fr; }
+      .taiga-answer { min-width: 0; }
     }
   </style>
 </head>
@@ -1367,10 +1503,119 @@
         .replace(/\*([^*]+)\*/g, '<em>$1</em>');
     }
 
+    function statusClass(value) {
+      const normalized = (value || '').toLowerCase();
+      if (normalized.includes('done') || normalized.includes('đã đóng')) return 'status-done';
+      if (normalized.includes('reject')) return 'status-reject';
+      if (normalized.includes('progress') || normalized.includes('prioritized')) return 'status-progress';
+      return 'status-open';
+    }
+
+    function renderTaigaCountAnswer(text) {
+      const match = text.match(/có\s+(\d+)\s+mục phù hợp:\s+(\d+)\s+đang mở\/chưa hoàn tất và\s+(\d+)\s+đã đóng/i);
+      if (!match) return '';
+      return `
+        <div class="taiga-answer">
+          <div class="taiga-summary">
+            <div class="taiga-stat">
+              <div class="taiga-stat-value">${escapeHTML(match[1])}</div>
+              <div class="taiga-stat-label">Tổng mục</div>
+            </div>
+            <div class="taiga-stat">
+              <div class="taiga-stat-value">${escapeHTML(match[2])}</div>
+              <div class="taiga-stat-label">Đang mở</div>
+            </div>
+            <div class="taiga-stat">
+              <div class="taiga-stat-value">${escapeHTML(match[3])}</div>
+              <div class="taiga-stat-label">Đã đóng</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTaigaListAnswer(text) {
+      const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+      if (!lines.length || !lines[0].toLowerCase().includes('taiga')) return '';
+
+      const cards = [];
+      let moreText = '';
+      let pendingCard = null;
+
+      function pushPendingCard() {
+        if (!pendingCard) return;
+        cards.push(`
+          <article class="taiga-card">
+            <div class="taiga-card-head">
+              <span class="taiga-ref">${escapeHTML(pendingCard.type)} #${escapeHTML(pendingCard.ref)}</span>
+              <div class="taiga-title">${escapeHTML(pendingCard.subject)}</div>
+            </div>
+            <div class="taiga-meta">
+              <span class="taiga-pill ${statusClass(pendingCard.status)}">${escapeHTML(pendingCard.status)}</span>
+              <span class="taiga-pill">${escapeHTML(pendingCard.assignee)}</span>
+              <span class="taiga-pill ${statusClass(pendingCard.state)}">${escapeHTML(pendingCard.state)}</span>
+            </div>
+            ${pendingCard.description ? `<p class="taiga-description">${escapeHTML(pendingCard.description)}</p>` : ''}
+            ${pendingCard.url ? `
+              <div class="taiga-card-foot">
+                <a class="taiga-link" href="${escapeHTML(pendingCard.url)}" target="_blank" rel="noopener noreferrer">
+                  <span>Xem chi tiết</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3ZM5 5h6v2H7v10h10v-4h2v6H5V5Z"/></svg>
+                </a>
+              </div>
+            ` : ''}
+          </article>
+        `);
+        pendingCard = null;
+      }
+
+      for (const line of lines.slice(1)) {
+        const item = line.match(/^-\s+([a-z_]+)\s+#?([^:]+):\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(https?:\/\/\S+))?$/i);
+        const detail = line.match(/^Chi tiết:\s+(.+)$/i);
+        const more = line.match(/^Còn\s+(.+)$/i);
+        if (item) {
+          pushPendingCard();
+          const type = item[1].replace('_', ' ');
+          const ref = item[2];
+          const subject = item[3];
+          const status = item[4];
+          const assignee = item[5];
+          const state = item[6];
+          const url = item[7] || '';
+          pendingCard = { type, ref, subject, status, assignee, state, url, description: '' };
+        } else if (detail && pendingCard) {
+          pendingCard.description = detail[1];
+        } else if (more) {
+          pushPendingCard();
+          moreText = more[0];
+        }
+      }
+      pushPendingCard();
+
+      if (!cards.length) return '';
+      return `
+        <div class="taiga-answer">
+          <h3>${renderInlineMarkdown(lines[0].replace(/:$/, ''))}</h3>
+          <div class="taiga-list">${cards.join('')}</div>
+          ${moreText ? `<div class="taiga-more">${escapeHTML(moreText)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function renderTaigaAnswer(text) {
+      return renderTaigaCountAnswer(text) || renderTaigaListAnswer(text);
+    }
+
     function renderFormattedAnswer(bubble, text) {
       const trimmed = (text || '').trim();
       if (!trimmed) {
         bubble.textContent = '';
+        return;
+      }
+
+      const taigaHTML = renderTaigaAnswer(trimmed);
+      if (taigaHTML) {
+        bubble.innerHTML = taigaHTML;
         return;
       }
 

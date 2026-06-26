@@ -142,6 +142,30 @@ def _taiga_search_term(query):
     return ""
 
 
+def _taiga_web_base():
+    return TAIGA_BASE_URL.removesuffix("/api/v1").rstrip("/")
+
+
+def _taiga_detail_url(kind, item):
+    project = item.get("project_extra_info") or {}
+    slug = project.get("slug") if isinstance(project, dict) else ""
+    ref = item.get("ref")
+    if not slug or not ref:
+        return ""
+
+    route = {"issue": "issue", "task": "task", "user_story": "us"}.get(kind)
+    if not route:
+        return ""
+    return f"{_taiga_web_base()}/project/{slug}/{route}/{ref}"
+
+
+def _brief_text(value, limit=180):
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "..."
+
+
 def _compact_taiga_item(kind, item):
     status = item.get("status_extra_info") or {}
     assignee = item.get("assigned_to_extra_info") or {}
@@ -150,6 +174,8 @@ def _compact_taiga_item(kind, item):
         "id": item.get("id"),
         "ref": item.get("ref"),
         "subject": item.get("subject", ""),
+        "description": _brief_text(item.get("description")),
+        "url": _taiga_detail_url(kind, item),
         "status": status.get("name") if isinstance(status, dict) else None,
         "assigned_to": assignee.get("full_name_display") if isinstance(assignee, dict) else None,
         "is_closed": item.get("is_closed"),
@@ -222,7 +248,13 @@ def _format_taiga_item_line(item):
     status = item.get("status") or "chưa rõ trạng thái"
     assignee = item.get("assigned_to") or "chưa gán"
     closed = "đã đóng" if item.get("is_closed") else "đang mở"
-    return f"- {item['type']} {ref}: {item.get('subject', '')} | {status} | {assignee} | {closed}"
+    url = item.get("url") or ""
+    line = f"- {item['type']} {ref}: {item.get('subject', '')} | {status} | {assignee} | {closed}"
+    if url:
+        line += f" | {url}"
+    if item.get("description"):
+        line += f"\n  Chi tiết: {item['description']}"
+    return line
 
 
 def _format_taiga_direct_answer(message, result):
