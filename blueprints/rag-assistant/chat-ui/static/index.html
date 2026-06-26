@@ -9,8 +9,8 @@
       --do-blue: #0069ff;
       --do-blue-hover: #0055d4;
       --do-blue-light: #e8f0ff;
-      --do-dark: #0d2137;
-      --do-gray-50: #f8f9fb;
+      --do-dark: #10243e;
+      --do-gray-50: #f7f8fb;
       --do-gray-100: #f0f2f5;
       --do-gray-200: #e1e5ea;
       --do-gray-300: #c8cfd7;
@@ -19,76 +19,235 @@
       --do-gray-900: #1a202c;
       --do-white: #ffffff;
       --do-green: #15cd72;
+      --do-orange: #f59e0b;
       --do-radius: 8px;
-      --do-radius-lg: 12px;
-      --do-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --do-radius-lg: 10px;
+      --do-shadow: 0 1px 2px rgba(13,33,55,0.06), 0 8px 24px rgba(13,33,55,0.05);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: var(--do-gray-50);
+      background: #f5f7fb;
       height: 100vh;
       display: flex;
       flex-direction: column;
       color: var(--do-gray-900);
     }
     header {
-      background: var(--do-dark);
-      padding: 0 24px;
-      height: 56px;
+      background: var(--do-white);
+      border-bottom: 1px solid var(--do-gray-200);
+      padding: 0 28px;
+      height: 60px;
       display: flex;
       align-items: center;
       gap: 12px;
       flex-shrink: 0;
     }
     .header-logo {
-      width: 28px; height: 28px;
-      background: linear-gradient(135deg, #ff8a18, #ffc400);
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #f97316, #facc15);
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 16px rgba(249,115,22,0.22);
     }
     .header-logo svg { width: 22px; height: 22px; fill: white; }
-    .header-title { color: white; font-size: 15px; font-weight: 600; }
+    .header-title { color: var(--do-gray-900); font-size: 15px; font-weight: 700; }
     .header-badge {
-      background: rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.7);
+      background: var(--do-gray-100);
+      color: var(--do-gray-700);
       font-size: 11px;
-      padding: 2px 8px;
+      padding: 4px 8px;
       border-radius: 4px;
-      font-weight: 500;
+      font-weight: 600;
     }
-    .chat-container { flex: 1; overflow-y: auto; padding: 24px 16px; }
-    .chat-inner { max-width: 720px; margin: 0 auto; }
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-action {
+      height: 34px;
+      min-width: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: var(--do-white);
+      color: var(--do-gray-700);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .header-action:hover {
+      background: var(--do-blue-light);
+      border-color: rgba(0,105,255,0.28);
+      color: var(--do-blue);
+    }
+    .header-action svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+    .history-count {
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 9px;
+      background: var(--do-gray-100);
+      color: var(--do-gray-700);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .chat-container { flex: 1; overflow-y: auto; padding: 24px 20px; margin-left: 340px; }
+    .chat-inner { max-width: 920px; margin: 0 auto; }
 
     /* Trạng thái chưa có tin nhắn */
-    .empty-state { padding-top: 8vh; }
-    .empty-icon {
-      width: 64px; height: 64px;
-      background: linear-gradient(135deg, #ff8a18, #ffc400);
-      border-radius: 18px;
-      display: inline-flex; align-items: center; justify-content: center;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 16px rgba(255,138,24,0.28);
+    .empty-state {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding-top: 22px;
+      max-width: 760px;
+      margin: 0 auto;
     }
-    .empty-icon svg { width: 42px; height: 42px; fill: white; }
-    .empty-header { text-align: center; margin-bottom: 24px; }
-    .empty-state h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-    .empty-state p { color: var(--do-gray-500); font-size: 14px; line-height: 1.6; max-width: 520px; margin: 0 auto; }
+    .empty-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, #f97316, #facc15);
+      border-radius: var(--do-radius);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px rgba(249,115,22,0.18);
+    }
+    .empty-icon svg { width: 28px; height: 28px; fill: white; }
+    .empty-header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--do-white);
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      box-shadow: var(--do-shadow);
+      padding: 16px;
+    }
+    .empty-copy { min-width: 0; }
+    .empty-state h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .empty-state p { color: var(--do-gray-500); font-size: 13px; line-height: 1.55; max-width: 760px; margin: 0; }
+    .kb-overview {
+      min-width: 0;
+      max-width: none;
+      margin: 0;
+      background: var(--do-white);
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      box-shadow: var(--do-shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .kb-overview-header {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--do-gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .kb-overview-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .kb-overview-meta {
+      color: var(--do-gray-500);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .kb-overview-body {
+      padding: 12px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .kb-status {
+      color: var(--do-gray-500);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .kb-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 2px;
+    }
+    .kb-item {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: var(--do-white);
+    }
+    .kb-item:hover { border-color: rgba(0,105,255,0.26); background: #fbfdff; }
+    .kb-file-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--do-radius);
+      background: #eef4ff;
+      color: var(--do-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .kb-file-icon.pdf { background: #fff4e5; color: #c56b00; }
+    .kb-file-icon.web { background: #eafaf2; color: #0f8f53; }
+    .kb-file-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+    .kb-item-main { min-width: 0; }
+    .kb-item-name {
+      min-width: 0;
+      color: var(--do-gray-900);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .kb-item-meta {
+      color: var(--do-gray-500);
+      font-size: 11px;
+      white-space: nowrap;
+    }
 
     /* Câu hỏi gợi ý */
     .prompt-sections {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
-      margin: 0 auto;
-      max-width: 720px;
+      margin: 0;
+      max-width: none;
     }
     .prompt-section {
       background: var(--do-white);
       border: 1px solid var(--do-gray-200);
       border-radius: var(--do-radius);
       box-shadow: var(--do-shadow);
-      padding: 14px;
+      padding: 13px;
     }
     .prompt-section h3 {
       font-size: 13px;
@@ -103,10 +262,10 @@
     }
     .prompt-list { display: flex; flex-direction: column; gap: 8px; }
     .prompt-btn {
-      background: var(--do-white);
+      background: #fbfcfe;
       border: 1px solid var(--do-gray-200);
       border-radius: var(--do-radius);
-      padding: 9px 10px;
+      padding: 10px;
       font-size: 13px;
       color: var(--do-gray-700);
       cursor: pointer;
@@ -126,28 +285,28 @@
     }
 
     /* Tin nhắn */
-    .message { margin-bottom: 20px; display: flex; gap: 12px; animation: fadeIn 0.2s ease; }
+    .message { margin-bottom: 18px; display: flex; gap: 12px; animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .message.user { flex-direction: row-reverse; }
     .avatar {
-      width: 32px; height: 32px;
+      width: 30px; height: 30px;
       border-radius: 8px;
       flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       font-size: 13px; font-weight: 600;
     }
     .message.assistant .avatar { background: var(--do-blue); color: white; }
-    .message.user .avatar { background: var(--do-gray-200); color: var(--do-gray-700); }
+    .message.user .avatar { background: #fff4e0; color: #9a5a00; }
     .bubble {
       max-width: 80%;
       padding: 10px 14px;
-      border-radius: var(--do-radius-lg);
+      border-radius: var(--do-radius);
       line-height: 1.6;
       font-size: 14px;
       word-wrap: break-word;
     }
     .message.user .bubble { white-space: pre-wrap; }
-    .message.user .bubble { background: var(--do-blue); color: white; border-bottom-right-radius: 4px; }
+    .message.user .bubble { background: var(--do-dark); color: white; border-bottom-right-radius: 4px; }
     .message.assistant .bubble { background: var(--do-white); color: var(--do-gray-900); border: 1px solid var(--do-gray-200); border-bottom-left-radius: 4px; box-shadow: var(--do-shadow); }
     .assistant-content { display: flex; flex-direction: column; align-items: flex-start; max-width: 80%; }
     .assistant-content .bubble { max-width: 100%; }
@@ -224,7 +383,8 @@
     .input-area {
       background: var(--do-white);
       border-top: 1px solid var(--do-gray-200);
-      padding: 16px;
+      padding: 12px 20px;
+      margin-left: 340px;
       flex-shrink: 0;
       transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
@@ -232,11 +392,11 @@
       border-top-color: rgba(0, 105, 255, 0.28);
       box-shadow: 0 -8px 22px rgba(13, 33, 55, 0.04);
     }
-    .input-inner { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
+    .input-inner { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
     .input-wrapper { flex: 1; }
     textarea {
       width: 100%;
-      padding: 10px 14px;
+      padding: 11px 14px;
       border: 1px solid var(--do-gray-200);
       border-radius: var(--do-radius);
       font-size: 14px;
@@ -245,8 +405,8 @@
       resize: none;
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-      height: 42px;
-      min-height: 42px;
+      height: 44px;
+      min-height: 44px;
       max-height: 120px;
     }
     textarea:focus { border-color: var(--do-blue); box-shadow: 0 0 0 3px rgba(0,105,255,0.1); }
@@ -259,7 +419,7 @@
     }
     textarea::placeholder { color: var(--do-gray-300); }
     .send-btn {
-      width: 42px; height: 42px;
+      width: 44px; height: 44px;
       background: var(--do-blue);
       color: white;
       border: none;
@@ -310,9 +470,174 @@
       70% { box-shadow: 0 0 0 7px rgba(0,105,255,0); }
       100% { box-shadow: 0 0 0 0 rgba(0,105,255,0); }
     }
-    @media (max-width: 720px) {
+    .history-panel {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      bottom: 0;
+      width: 340px;
+      background: var(--do-white);
+      border-right: 1px solid var(--do-gray-200);
+      box-shadow: 10px 0 24px rgba(13,33,55,0.04);
+      display: flex;
+      flex-direction: column;
+      transform: none;
+      transition: transform 0.22s ease;
+      z-index: 20;
+    }
+    .history-panel.open { transform: none; }
+    .history-panel .kb-overview {
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      flex: 1;
+      min-height: 0;
+    }
+    .rail-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 12px;
+      border-bottom: 1px solid var(--do-gray-200);
+      flex-shrink: 0;
+    }
+    .rail-tab {
+      height: 34px;
+      border: 1px solid transparent;
+      border-radius: var(--do-radius);
+      background: transparent;
+      color: var(--do-gray-500);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .rail-tab:hover {
+      color: var(--do-blue);
+      background: var(--do-blue-light);
+    }
+    .rail-tab.active {
+      border-color: var(--do-gray-200);
+      background: var(--do-white);
+      color: var(--do-gray-900);
+      box-shadow: var(--do-shadow);
+    }
+    .rail-section {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+    }
+    .rail-section.active { display: flex; }
+    .history-panel .kb-list { max-height: none; }
+    .history-panel-header {
+      height: 48px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--do-gray-200);
+      border-top: 1px solid var(--do-gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .history-panel-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .history-panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .history-panel-btn {
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: var(--do-white);
+      color: var(--do-gray-700);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .history-panel-btn:hover { border-color: var(--do-blue); color: var(--do-blue); background: var(--do-blue-light); }
+    .history-close {
+      width: 32px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+      display: none;
+    }
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .history-empty {
+      color: var(--do-gray-500);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 18px 6px;
+      text-align: center;
+    }
+    .history-item {
+      border: 1px solid var(--do-gray-200);
+      border-radius: var(--do-radius);
+      background: var(--do-gray-50);
+      padding: 10px 12px;
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      color: var(--do-gray-900);
+    }
+    .history-item:hover {
+      border-color: var(--do-blue);
+      background: var(--do-blue-light);
+    }
+    .history-role {
+      color: var(--do-gray-500);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .history-text {
+      font-size: 13px;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history-item.expanded .history-text {
+      display: block;
+      overflow: visible;
+    }
+    @media (max-width: 900px) {
+      .chat-container { padding: 16px 12px; }
+      .chat-container,
+      .input-area { margin-left: 0; }
+      .history-panel {
+        width: min(360px, 92vw);
+        transform: translateX(-100%);
+        box-shadow: 16px 0 34px rgba(13,33,55,0.14);
+      }
+      .history-panel.open { transform: translateX(0); }
+      .history-close { display: inline-flex; align-items: center; justify-content: center; }
+      .empty-state { grid-template-columns: 1fr; padding-top: 8px; }
+      .empty-header { align-items: flex-start; }
       .prompt-sections { grid-template-columns: 1fr; }
-      .empty-state { padding-top: 4vh; }
+      header { padding: 0 12px; }
+      .header-badge { display: none; }
+      .header-action span:not(.history-count) { display: none; }
+      .bubble,
+      .assistant-content { max-width: calc(100vw - 80px); }
     }
   </style>
 </head>
@@ -326,7 +651,44 @@
     </div>
     <span class="header-title">{{AGENT_NAME}}</span>
     <span class="header-badge">Vận hành bởi Onflow.vn GenAI</span>
+    <div class="header-actions">
+      <button class="header-action" id="historyToggle" type="button" title="Xem tài liệu và lịch sử" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3a9 9 0 1 1-8.03 4.91l-1.45-.84A10.96 10.96 0 0 0 2 12h2.02A9 9 0 0 1 13 3zm-1 4h2v5.08l4.24 2.52-1.02 1.72L12 13.2V7zM2 4v6h6V8H5.42A9.05 9.05 0 0 1 8.7 5.36L7.68 3.63A11.02 11.02 0 0 0 4 6.32V4H2z"/></svg>
+        <span>Tài liệu</span>
+        <span class="history-count" id="historyCount">0</span>
+      </button>
+    </div>
   </header>
+
+  <aside class="history-panel" id="historyPanel" aria-label="Tài liệu và lịch sử chat" aria-hidden="false">
+    <div class="rail-tabs" role="tablist" aria-label="Tài liệu và lịch sử">
+      <button class="rail-tab active" id="docsTab" type="button" role="tab" aria-selected="true" aria-controls="docsPanel">Tài liệu</button>
+      <button class="rail-tab" id="historyTab" type="button" role="tab" aria-selected="false" aria-controls="historyPanelContent">Lịch sử</button>
+    </div>
+
+    <section class="rail-section active" id="docsPanel" role="tabpanel" aria-labelledby="docsTab">
+      <div class="kb-overview" id="kbOverview">
+        <div class="kb-overview-header">
+          <div class="kb-overview-title">Tài liệu hiện có</div>
+          <div class="kb-overview-meta" id="kbOverviewMeta">Đang tải...</div>
+        </div>
+        <div class="kb-overview-body" id="kbOverviewBody">
+          <div class="kb-status">Đang lấy thông tin từ Knowledge Base.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rail-section" id="historyPanelContent" role="tabpanel" aria-labelledby="historyTab">
+      <div class="history-panel-header">
+        <div class="history-panel-title">Lịch sử chat</div>
+        <div class="history-panel-actions">
+          <button class="history-panel-btn" id="clearHistory" type="button">Xóa</button>
+          <button class="history-panel-btn history-close" id="historyClose" type="button" title="Đóng">×</button>
+        </div>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </section>
+  </aside>
 
   <div class="chat-container" id="chat">
     <div class="chat-inner" id="chatInner">
@@ -338,8 +700,10 @@
               <path d="M178 90h148c28 0 45 10 59 35l61 113c7 12 7 24 0 36l-61 113c-14 25-31 35-59 35H178c24-16 38-33 52-58l47-84c10-17 10-31 0-48l-47-84c-14-25-28-42-52-58z"/>
             </svg>
           </div>
-          <h2>Trợ lý tri thức Onflow.vn</h2>
-          <p>Chọn đúng nhóm câu hỏi hoặc nhập trực tiếp nội dung cần tra cứu. Trợ lý sẽ ưu tiên trả lời dựa trên kho tri thức đã cấu hình.</p>
+          <div class="empty-copy">
+            <h2>Trợ lý tri thức Onflow.vn</h2>
+            <p>Chọn đúng nhóm câu hỏi hoặc nhập trực tiếp nội dung cần tra cứu. Trợ lý sẽ ưu tiên trả lời dựa trên kho tri thức đã cấu hình.</p>
+          </div>
         </div>
 
         <div class="prompt-sections">
@@ -386,11 +750,30 @@
     const sendBtn = document.getElementById('send');
     const inputArea = document.querySelector('.input-area');
     const inputHint = document.getElementById('inputHint');
+    const historyToggle = document.getElementById('historyToggle');
+    const historyPanel = document.getElementById('historyPanel');
+    const historyList = document.getElementById('historyList');
+    const historyCount = document.getElementById('historyCount');
+    const historyClose = document.getElementById('historyClose');
+    const clearHistoryBtn = document.getElementById('clearHistory');
+    const docsTab = document.getElementById('docsTab');
+    const historyTab = document.getElementById('historyTab');
+    const docsPanel = document.getElementById('docsPanel');
+    const historyPanelContent = document.getElementById('historyPanelContent');
+    const kbOverviewMeta = document.getElementById('kbOverviewMeta');
+    const kbOverviewBody = document.getElementById('kbOverviewBody');
     const sendIcon = sendBtn.innerHTML;
     const defaultHint = 'Nhấn Enter để gửi, Shift+Enter để xuống dòng';
+    const storageKey = 'onflow-rag-chat-history';
+    const maxStoredMessages = 50;
     let history = [];
+    let savedHistory = [];
+    let lastSavedHistoryLength = 0;
     let isComposing = false;
     let isLoading = false;
+
+    initializeStoredHistory();
+    loadKnowledgeBases();
 
     textarea.addEventListener('input', function() {
       this.style.height = 'auto';
@@ -407,6 +790,33 @@
         e.preventDefault();
         sendMessage();
       }
+    });
+    historyToggle.addEventListener('click', function() {
+      if (!window.matchMedia('(max-width: 900px)').matches) {
+        setRailTab('docs');
+        renderHistoryList();
+        return;
+      }
+      setRailTab('docs');
+      setHistoryPanelOpen(!historyPanel.classList.contains('open'));
+    });
+    docsTab.addEventListener('click', function() {
+      setRailTab('docs');
+    });
+    historyTab.addEventListener('click', function() {
+      setRailTab('history');
+    });
+    historyClose.addEventListener('click', function() {
+      setHistoryPanelOpen(false);
+    });
+    clearHistoryBtn.addEventListener('click', function() {
+      if (isLoading) return;
+      if (savedHistory.length > 0 && !confirm('Xóa toàn bộ lịch sử chat đã lưu trên trình duyệt này?')) return;
+      savedHistory = [];
+      localStorage.removeItem(storageKey);
+      renderHistoryList();
+      setHistoryPanelOpen(false);
+      textarea.focus();
     });
 
     function usePrompt(btn) {
@@ -466,6 +876,8 @@
             showResponseDone(assistantEl);
           }
           history.push({ role: 'assistant', content });
+          saveNewHistoryMessages();
+          renderHistoryList();
           return;
         }
 
@@ -510,13 +922,215 @@
           showResponseDone(assistantEl);
         }
         history.push({ role: 'assistant', content });
+        saveNewHistoryMessages();
+        renderHistoryList();
       } catch (err) {
+        const errorContent = 'Lỗi kết nối: ' + err.message;
         typingEl.remove();
-        appendMessage('assistant', 'Lỗi kết nối: ' + err.message, true);
+        appendMessage('assistant', errorContent, true);
+        history.push({ role: 'assistant', content: errorContent });
+        saveNewHistoryMessages();
+        renderHistoryList();
       } finally {
         setInputLocked(false);
         textarea.focus();
       }
+    }
+
+    function initializeStoredHistory() {
+      savedHistory = loadHistory();
+      renderHistoryList();
+    }
+
+    function loadHistory() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+          .slice(-maxStoredMessages);
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveNewHistoryMessages() {
+      const newMessages = history.slice(lastSavedHistoryLength);
+      lastSavedHistoryLength = history.length;
+      if (newMessages.length === 0) return;
+
+      savedHistory = savedHistory.concat(newMessages).slice(-maxStoredMessages);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(savedHistory));
+      } catch (err) {
+        console.warn('Could not save chat history', err);
+      }
+      historyCount.textContent = String(savedHistory.length);
+    }
+
+    function renderHistoryList() {
+      historyCount.textContent = String(savedHistory.length);
+      historyList.innerHTML = '';
+      if (savedHistory.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'history-empty';
+        empty.textContent = 'Chưa có lịch sử chat được lưu trên trình duyệt này.';
+        historyList.appendChild(empty);
+        return;
+      }
+
+      savedHistory.slice().reverse().forEach((message) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'history-item';
+        item.addEventListener('click', function() {
+          item.classList.toggle('expanded');
+        });
+
+        const role = document.createElement('div');
+        role.className = 'history-role';
+        role.textContent = message.role === 'user' ? 'Bạn' : 'AI';
+        const text = document.createElement('div');
+        text.className = 'history-text';
+        text.textContent = message.content;
+        item.appendChild(role);
+        item.appendChild(text);
+        historyList.appendChild(item);
+      });
+    }
+
+    function setHistoryPanelOpen(open) {
+      if (!window.matchMedia('(max-width: 900px)').matches) {
+        historyPanel.classList.add('open');
+        historyPanel.setAttribute('aria-hidden', 'false');
+        historyToggle.setAttribute('aria-expanded', 'true');
+        if (open) renderHistoryList();
+        return;
+      }
+      historyPanel.classList.toggle('open', open);
+      historyPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+      historyToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) renderHistoryList();
+    }
+
+    function setRailTab(tab) {
+      const showDocs = tab === 'docs';
+      docsTab.classList.toggle('active', showDocs);
+      historyTab.classList.toggle('active', !showDocs);
+      docsTab.setAttribute('aria-selected', showDocs ? 'true' : 'false');
+      historyTab.setAttribute('aria-selected', showDocs ? 'false' : 'true');
+      docsPanel.classList.toggle('active', showDocs);
+      historyPanelContent.classList.toggle('active', !showDocs);
+      if (!showDocs) renderHistoryList();
+    }
+
+    async function loadKnowledgeBases() {
+      if (!kbOverviewMeta || !kbOverviewBody) return;
+
+      try {
+        const res = await fetch('/api/knowledge-bases');
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Không lấy được thông tin Knowledge Base.');
+        }
+        renderKnowledgeBases(data.knowledge_bases || []);
+      } catch (err) {
+        kbOverviewMeta.textContent = 'Không tải được';
+        kbOverviewBody.innerHTML = '';
+        const status = document.createElement('div');
+        status.className = 'kb-status';
+        status.textContent = err.message;
+        kbOverviewBody.appendChild(status);
+      }
+    }
+
+    function renderKnowledgeBases(knowledgeBases) {
+      const allSources = knowledgeBases.flatMap((kb) => (kb.datasources || []).map((source) => ({ ...source, kbName: kb.name })));
+      kbOverviewBody.innerHTML = '';
+
+      if (allSources.length === 0) {
+        kbOverviewMeta.textContent = '0 tài liệu';
+        const status = document.createElement('div');
+        status.className = 'kb-status';
+        status.textContent = 'Chưa có datasource nào trong Knowledge Base đang gắn với agent.';
+        kbOverviewBody.appendChild(status);
+        return;
+      }
+
+      kbOverviewMeta.textContent = `${allSources.length} tài liệu`;
+      const list = document.createElement('div');
+      list.className = 'kb-list';
+
+      allSources.forEach((source) => {
+        const item = document.createElement('div');
+        item.className = 'kb-item';
+
+        const icon = document.createElement('div');
+        icon.className = 'kb-file-icon ' + getSourceIconClass(source);
+        icon.innerHTML = getSourceIcon(source);
+
+        const main = document.createElement('div');
+        main.className = 'kb-item-main';
+
+        const name = document.createElement('div');
+        name.className = 'kb-item-name';
+        name.title = source.name;
+        name.textContent = source.name;
+
+        const meta = document.createElement('div');
+        meta.className = 'kb-item-meta';
+        meta.textContent = formatSourceMeta(source, knowledgeBases.length > 1);
+
+        main.appendChild(name);
+        main.appendChild(meta);
+        item.appendChild(icon);
+        item.appendChild(main);
+        list.appendChild(item);
+      });
+
+      kbOverviewBody.appendChild(list);
+    }
+
+    function formatSourceMeta(source, showKbName) {
+      const parts = [];
+      if (source.type === 'file') {
+        parts.push('PDF');
+      } else if (source.type === 'web') {
+        parts.push('Web');
+      }
+      if (source.size_bytes) {
+        parts.push(formatBytes(source.size_bytes));
+      }
+      if (showKbName && source.kbName) {
+        parts.push(source.kbName);
+      }
+      return parts.join(' · ') || 'Nguồn dữ liệu';
+    }
+
+    function getSourceIconClass(source) {
+      if (source.type === 'web') return 'web';
+      const name = (source.name || '').toLowerCase();
+      if (name.endsWith('.pdf')) return 'pdf';
+      return 'file';
+    }
+
+    function getSourceIcon(source) {
+      if (source.type === 'web') {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.93 9h-3.1a15.5 15.5 0 0 0-1.08-5.1A8.04 8.04 0 0 1 18.93 11ZM12 4.04c.68.98 1.52 3.04 1.77 6.96h-3.54C10.48 7.08 11.32 5.02 12 4.04ZM4.26 13h3.91c.12 1.95.45 3.69.96 5.1A8.04 8.04 0 0 1 4.26 13Zm3.91-2H4.26A8.04 8.04 0 0 1 9.13 5.9 15.5 15.5 0 0 0 8.17 11ZM12 19.96c-.68-.98-1.52-3.04-1.77-6.96h3.54c-.25 3.92-1.09 5.98-1.77 6.96Zm2.87-1.86c.51-1.41.84-3.15.96-5.1h3.1a8.04 8.04 0 0 1-4.06 5.1Z"/></svg>';
+      }
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 7V4l5 5h-5Zm-6 5h10v2H7v-2Zm0 4h7v2H7v-2Zm0-8h4v2H7v-2Z"/></svg>';
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes) return '';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let value = bytes;
+      let unitIndex = 0;
+      while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+      }
+      return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
     }
 
     function appendMessage(role, text, isError) {

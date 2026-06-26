@@ -78,6 +78,26 @@ def _discover_agent():
         logger.info("Agent API key created")
 
 
+def _pick_datasource_label(source):
+    file_source = source.get("file_upload_data_source") or {}
+    if file_source:
+        return {
+            "type": "file",
+            "name": file_source.get("original_file_name") or file_source.get("stored_object_key") or "Uploaded file",
+            "size_bytes": int(file_source.get("size_in_bytes") or 0),
+        }
+
+    web_source = source.get("web_crawler_data_source") or {}
+    if web_source:
+        return {
+            "type": "web",
+            "name": web_source.get("base_url") or "Web crawler source",
+            "size_bytes": None,
+        }
+
+    return {"type": "source", "name": source.get("uuid", "Knowledge source"), "size_bytes": None}
+
+
 @app.on_event("startup")
 async def startup_event():
     _discover_agent()
@@ -92,6 +112,74 @@ async def index():
 @app.get("/health")
 async def health():
     return {"status": "ok", "agent_ready": AGENT_ENDPOINT is not None}
+
+
+@app.get("/api/knowledge-bases")
+async def knowledge_bases():
+    """Return attached knowledge base metadata and data sources for the UI."""
+    headers = _do_headers()
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            agent_resp = await client.get(f"{DO_API_BASE}/v2/gen-ai/agents/{AGENT_UUID}", headers=headers)
+            agent_resp.raise_for_status()
+            agent = agent_resp.json().get("agent", {})
+            attached_kbs = agent.get("knowledge_bases") or []
+
+            result = []
+            for kb in attached_kbs:
+                kb_uuid = kb.get("uuid")
+                if not kb_uuid:
+                    continue
+
+                sources_resp = await client.get(
+                    f"{DO_API_BASE}/v2/gen-ai/knowledge_bases/{kb_uuid}/data_sources",
+                    headers=headers,
+                    params={"page": 1, "per_page": 200},
+                )
+                sources = []
+                if sources_resp.status_code < 400:
+                    sources_data = sources_resp.json()
+                    if isinstance(sources_data, dict):
+                        raw_sources = sources_data.get("knowledge_base_data_sources") or sources_data.get("data_sources")
+                    else:
+                        raw_sources = sources_data
+                    if isinstance(raw_sources, list):
+                        for source in raw_sources:
+                            label = _pick_datasource_label(source)
+                            sources.append(
+                                {
+                                    "uuid": source.get("uuid"),
+                                    "created_at": source.get("created_at"),
+                                    "updated_at": source.get("updated_at"),
+                                    **label,
+                                }
+                            )
+                else:
+                    logger.warning("Could not fetch data sources for KB %s: %s", kb_uuid, sources_resp.text)
+
+                indexing_job = kb.get("last_indexing_job") or {}
+                result.append(
+                    {
+                        "uuid": kb_uuid,
+                        "name": kb.get("name", "Knowledge Base"),
+                        "region": kb.get("region"),
+                        "updated_at": kb.get("updated_at"),
+                        "indexing_status": indexing_job.get("status"),
+                        "indexing_phase": indexing_job.get("phase"),
+                        "tokens": indexing_job.get("tokens"),
+                        "datasources": sources,
+                    }
+                )
+
+    except httpx.HTTPStatusError as exc:
+        logger.exception("Knowledge base metadata request failed")
+        return JSONResponse(status_code=exc.response.status_code, content={"error": exc.response.text})
+    except httpx.RequestError as exc:
+        logger.exception("Knowledge base metadata request failed")
+        return JSONResponse(status_code=502, content={"error": f"Không lấy được Knowledge Base: {exc}"})
+
+    return {"knowledge_bases": result}
 
 
 @app.post("/api/chat")
