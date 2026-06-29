@@ -20,6 +20,9 @@ __pycache__/
 .venv/
 venv/
 
+# Node
+node_modules/
+
 # Terraform
 .terraform
 .terraform.lock.hcl

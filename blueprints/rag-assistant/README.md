@@ -116,7 +116,7 @@ Use the chat interface to ask questions. The assistant will search your knowledg
 
 ## Chat UI
 
-The chat UI is a lightweight FastAPI application located in `chat-ui/`. It:
+The chat UI uses React + Vite for the browser application and FastAPI for the API proxy. It is located in `chat-ui/` and:
 
 - Serves a single-page web interface with a conversational chat layout.
 - Proxies messages to the managed agent's OpenAI-compatible chat completions endpoint.
@@ -130,12 +130,16 @@ To run the chat UI locally (requires a deployed agent):
 
 ```bash
 cd chat-ui
+npm install
+npm run build
 pip install -r requirements.txt
 export AGENT_UUID=<your-agent-uuid>
 export DO_API_TOKEN=<your-token>
 export AGENT_NAME="RAG Assistant"
 uvicorn main:app --host 0.0.0.0 --port 8080
 ```
+
+For frontend hot reload, run `npm run dev` in a second terminal. Vite proxies `/api` requests to FastAPI on port 8080.
 
 ## Security
 
