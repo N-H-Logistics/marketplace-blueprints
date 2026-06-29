@@ -1,8 +1,7 @@
 import {
-  completeKnowledgeBaseUpload,
-  createKnowledgeBaseUpload,
   deleteKnowledgeBaseDataSource,
   fetchKnowledgeBases,
+  uploadKnowledgeBaseFile,
 } from './api.js';
 
 export async function loadKnowledgeBases({
@@ -44,21 +43,7 @@ function setupUpload(elements) {
     setUploadStatus(kbUploadStatus, `Đang tải ${file.name}...`, 'loading');
     kbUploadButton.disabled = true;
     try {
-      const upload = await createKnowledgeBaseUpload({
-        knowledge_base_uuid: kb.uuid,
-        file_name: file.name,
-        file_size: file.size,
-      });
-      const objectResponse = await fetch(upload.upload_url, { method: 'PUT', body: file });
-      if (!objectResponse.ok) throw new Error('Không tải được file lên kho lưu trữ.');
-
-      setUploadStatus(kbUploadStatus, 'Đang thêm tài liệu và lập chỉ mục...', 'loading');
-      await completeKnowledgeBaseUpload({
-        knowledge_base_uuid: kb.uuid,
-        file_name: upload.file_name,
-        file_size: upload.file_size,
-        object_key: upload.object_key,
-      });
+      await uploadKnowledgeBaseFile(kb.uuid, file);
       setUploadStatus(kbUploadStatus, 'Đã thêm tài liệu. Knowledge Base đang lập chỉ mục.', 'success');
       const refreshed = await fetchKnowledgeBases();
       renderKnowledgeBases(

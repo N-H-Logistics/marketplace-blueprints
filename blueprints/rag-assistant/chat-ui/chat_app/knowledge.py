@@ -180,6 +180,28 @@ async def complete_upload(file_name, file_size, object_key, kb_uuid):
         return {"data_source_uuid": source_uuid, "indexing_job": index_response.json().get("job")}
 
 
+async def upload_file(file_name, file_size, content, kb_uuid):
+    safe_name, size = validate_upload(file_name, file_size)
+    if len(content) != size:
+        raise ValueError("Kích thước file nhận được không khớp với yêu cầu upload.")
+
+    upload = await create_upload(safe_name, size, kb_uuid)
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        storage_response = await client.put(
+            upload["upload_url"],
+            content=content,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        storage_response.raise_for_status()
+
+    return await complete_upload(
+        upload["file_name"],
+        upload["file_size"],
+        upload["object_key"],
+        kb_uuid,
+    )
+
+
 async def delete_data_source(kb_uuid, data_source_uuid):
     if not data_source_uuid or not isinstance(data_source_uuid, str):
         raise ValueError("Thiếu datasource cần xoá.")

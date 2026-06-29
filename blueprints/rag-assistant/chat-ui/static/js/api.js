@@ -11,22 +11,18 @@ export async function fetchKnowledgeBases() {
   return readJsonResponse(res, 'Không lấy được thông tin Knowledge Base.');
 }
 
-export async function createKnowledgeBaseUpload(payload) {
-  const res = await fetch('/api/knowledge-bases/uploads', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+export async function uploadKnowledgeBaseFile(knowledgeBaseUuid, file) {
+  const query = new URLSearchParams({
+    knowledge_base_uuid: knowledgeBaseUuid,
+    file_name: file.name,
+    file_size: String(file.size),
   });
-  return readJsonResponse(res, 'Không khởi tạo được upload.');
-}
-
-export async function completeKnowledgeBaseUpload(payload) {
-  const res = await fetch('/api/knowledge-bases/uploads/complete', {
+  const res = await fetch(`/api/knowledge-bases/uploads/file?${query}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: file,
   });
-  return readJsonResponse(res, 'Không thêm được tài liệu vào Knowledge Base.');
+  return readJsonResponse(res, 'Không tải được tài liệu lên Knowledge Base.');
 }
 
 export async function deleteKnowledgeBaseDataSource(knowledgeBaseUuid, dataSourceUuid) {

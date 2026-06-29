@@ -75,41 +75,29 @@ async def knowledge_bases():
         return JSONResponse(status_code=502, content={"error": f"Không lấy được Knowledge Base: {exc}"})
 
 
-@router.post("/api/knowledge-bases/uploads")
-async def create_knowledge_base_upload(request: Request):
+@router.post("/api/knowledge-bases/uploads/file")
+async def upload_knowledge_base_file(
+    request: Request,
+    knowledge_base_uuid: str,
+    file_name: str,
+    file_size: int,
+):
     try:
-        payload = await request.json()
-        return await knowledge.create_upload(
-            payload.get("file_name"), payload.get("file_size"), payload.get("knowledge_base_uuid")
-        )
+        _, expected_size = knowledge.validate_upload(file_name, file_size)
+        content = bytearray()
+        async for chunk in request.stream():
+            content.extend(chunk)
+            if len(content) > expected_size or len(content) > config.KB_UPLOAD_MAX_BYTES:
+                raise ValueError("Nội dung file vượt quá kích thước upload đã khai báo.")
+        return await knowledge.upload_file(file_name, file_size, bytes(content), knowledge_base_uuid)
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"error": str(exc)})
     except httpx.HTTPStatusError as exc:
-        logger.exception("Knowledge base upload initialization failed")
+        logger.exception("Knowledge base file upload failed")
         return JSONResponse(status_code=exc.response.status_code, content={"error": exc.response.text})
     except (httpx.RequestError, RuntimeError) as exc:
-        logger.exception("Knowledge base upload initialization failed")
-        return JSONResponse(status_code=502, content={"error": f"Không khởi tạo được upload: {exc}"})
-
-
-@router.post("/api/knowledge-bases/uploads/complete")
-async def complete_knowledge_base_upload(request: Request):
-    try:
-        payload = await request.json()
-        return await knowledge.complete_upload(
-            payload.get("file_name"),
-            payload.get("file_size"),
-            payload.get("object_key"),
-            payload.get("knowledge_base_uuid"),
-        )
-    except ValueError as exc:
-        return JSONResponse(status_code=400, content={"error": str(exc)})
-    except httpx.HTTPStatusError as exc:
-        logger.exception("Knowledge base upload completion failed")
-        return JSONResponse(status_code=exc.response.status_code, content={"error": exc.response.text})
-    except (httpx.RequestError, RuntimeError) as exc:
-        logger.exception("Knowledge base upload completion failed")
-        return JSONResponse(status_code=502, content={"error": f"Không thêm được tài liệu: {exc}"})
+        logger.exception("Knowledge base file upload failed")
+        return JSONResponse(status_code=502, content={"error": f"Không tải được tài liệu: {exc}"})
 
 
 @router.delete("/api/knowledge-bases/{knowledge_base_uuid}/data-sources/{data_source_uuid}")
