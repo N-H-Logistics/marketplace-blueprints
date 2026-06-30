@@ -689,7 +689,7 @@
     .input-area {
       background: var(--do-white);
       border-top: 1px solid var(--do-gray-200);
-      padding: 12px 20px;
+      padding: 14px 20px 10px;
       margin-left: 340px;
       flex-shrink: 0;
       transition: border-color 0.18s ease, box-shadow 0.18s ease;
@@ -698,50 +698,93 @@
       border-top-color: rgba(0, 105, 255, 0.28);
       box-shadow: 0 -8px 22px rgba(13, 33, 55, 0.04);
     }
-    .input-inner { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
-    .input-wrapper { flex: 1; }
-    textarea {
-      width: 100%;
-      padding: 11px 14px;
+    .composer-shell {
+      max-width: 920px;
+      min-height: 132px;
+      margin: 0 auto;
+      padding: 16px 16px 12px;
+      display: flex;
+      flex-direction: column;
       border: 1px solid var(--do-gray-200);
-      border-radius: var(--do-radius);
-      font-size: 14px;
+      border-radius: 28px;
+      background: var(--do-white);
+      box-shadow: 0 12px 30px rgba(13, 33, 55, 0.08);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .composer-shell:focus-within {
+      border-color: rgba(0, 105, 255, 0.55);
+      box-shadow: 0 0 0 3px rgba(0,105,255,0.08), 0 12px 30px rgba(13,33,55,0.08);
+    }
+    .composer-input {
+      width: 100%;
+      min-height: 58px;
+      max-height: 132px;
+      padding: 2px 4px;
+      border: 0;
+      background: transparent;
+      font-size: 17px;
       font-family: inherit;
       line-height: 1.5;
       resize: none;
       outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-      height: 44px;
-      min-height: 44px;
-      max-height: 120px;
+      color: var(--do-gray-900);
+      overflow-y: auto;
     }
-    textarea:focus { border-color: var(--do-blue); box-shadow: 0 0 0 3px rgba(0,105,255,0.1); }
-    textarea[readonly] {
-      background: var(--do-white);
-      border-color: var(--do-blue);
-      box-shadow: 0 0 0 3px rgba(0,105,255,0.08);
+    .composer-input[readonly] {
+      background: transparent;
       color: var(--do-gray-700);
       cursor: not-allowed;
     }
-    textarea::placeholder { color: var(--do-gray-300); }
+    .composer-input::placeholder { color: #a5abb3; }
+    .composer-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 8px;
+    }
+    .composer-tool {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--do-gray-200);
+      border-radius: 50%;
+      background: var(--do-white);
+      color: var(--do-gray-700);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .composer-tool:hover { background: var(--do-gray-50); border-color: var(--do-gray-300); }
+    .composer-tool svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    .composer-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--do-gray-500);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .composer-label svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
     .send-btn {
-      width: 44px; height: 44px;
+      width: 40px; height: 40px;
+      margin-left: auto;
       background: var(--do-blue);
       color: white;
       border: none;
-      border-radius: var(--do-radius);
+      border-radius: 50%;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s;
+      transition: background 0.15s, transform 0.15s;
       flex-shrink: 0;
     }
-    .send-btn:hover { background: var(--do-blue-hover); }
-    .send-btn:disabled { background: var(--do-gray-200); cursor: not-allowed; }
+    .send-btn:hover:not(:disabled) { background: var(--do-blue-hover); transform: translateY(-1px); }
+    .send-btn:disabled { background: #eceef1; color: #aeb4bc; cursor: not-allowed; }
     .send-btn.is-loading {
       background: var(--do-blue);
       cursor: progress;
     }
-    .send-btn svg { width: 18px; height: 18px; fill: currentColor; }
+    .send-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .send-spinner {
       width: 18px;
       height: 18px;
@@ -751,6 +794,43 @@
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .quick-prompts {
+      max-width: 920px;
+      margin: 10px auto 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .quick-prompts::-webkit-scrollbar { display: none; }
+    .quick-prompts button {
+      padding: 8px 13px;
+      border: 1px solid var(--do-gray-200);
+      border-radius: 999px;
+      background: var(--do-white);
+      color: var(--do-gray-700);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .quick-prompts button svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .quick-prompts button:hover:not(:disabled) { border-color: rgba(0,105,255,.4); color: var(--do-blue); background: var(--do-blue-light); }
+    .quick-prompts button:disabled { opacity: .55; cursor: not-allowed; }
     .input-hint {
       display: flex;
       align-items: center;
@@ -1083,4 +1163,8 @@
       .taiga-summary { grid-template-columns: 1fr; }
       .taiga-answer { min-width: 0; }
       .taiga-form-grid { grid-template-columns: 1fr; }
+      .input-area { padding: 10px 12px 8px; }
+      .composer-shell { min-height: 112px; border-radius: 22px; padding: 13px 13px 10px; }
+      .composer-input { min-height: 48px; font-size: 16px; }
+      .quick-prompts { justify-content: flex-start; }
     }

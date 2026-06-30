@@ -310,6 +310,28 @@ function EmptyState({ onPrompt, disabled }) {
   </div>;
 }
 
+function PlusIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
+}
+
+function SendIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 11 6-6 6 6M12 5v14" /></svg>;
+}
+
+function SparkIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3ZM6 14l.8 2.2L9 17l-2.2.8L6 20l-.8-2.2L3 17l2.2-.8L6 14Zm11 0 1 2.8 3 1.2-3 1.2L17 22l-1-2.8-3-1.2 3-1.2L17 14Z" /></svg>;
+}
+
+function QuickPromptIcon({ type }) {
+  const paths = {
+    policy: <><path d="M6 3.5h9l3 3V20H6z" /><path d="M15 3.5V7h3M9 11h6M9 15h6" /></>,
+    process: <><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="6" cy="18" r="2" /><path d="M8 6h3a3 3 0 0 1 3 3v0a3 3 0 0 0 3 3M16 12h-2a3 3 0 0 0-3 3v0a3 3 0 0 1-3 3" /></>,
+    summary: <><path d="M5 4h14v16H5z" /><path d="M8.5 8H16M8.5 12H16M8.5 16H13" /></>,
+    bug: <><path d="M8 9h8v7a4 4 0 0 1-8 0zM10 9V7a2 2 0 0 1 4 0v2M4 12h4M16 12h4M5 18l3-2M19 18l-3-2M6 7l2 2M18 7l-2 2" /></>,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[type]}</svg>;
+}
+
 function isTaigaIntent(message) {
   const text = message.toLowerCase();
   return ['tạo', 'tao', 'thêm', 'them', 'ghi nhận'].some((word) => text.includes(word))
@@ -385,10 +407,22 @@ export default function App({ agentName }) {
   const [taigaSubject, setTaigaSubject] = useState(null);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
+  const quickPrompts = [
+    { label: 'Tra cứu chính sách', icon: 'policy' },
+    { label: 'Hướng dẫn quy trình', icon: 'process' },
+    { label: 'Tóm tắt tài liệu', icon: 'summary' },
+    { label: 'Tạo báo lỗi', icon: 'bug' },
+  ];
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 132)}px`;
+  }, [input]);
   const save = (items) => {
     const next = [...history, ...items].slice(-MAX_HISTORY);
     setHistory(next);
@@ -458,15 +492,33 @@ export default function App({ agentName }) {
     <div className="chat-container" ref={chatRef}><div className="chat-inner">
       {messages.length === 0 ? <EmptyState disabled={loading} onPrompt={send} /> : messages.map((message, index) => <Message key={message.id || index} message={message} />)}
     </div></div>
-    <div className={`input-area ${loading ? 'waiting' : ''}`}><div className="input-inner"><div className="input-wrapper">
-      <textarea ref={inputRef} rows="1" value={input} readOnly={loading} autoFocus placeholder={loading ? 'Đợi AI trả lời xong...' : 'Hỏi về tài liệu của bạn...'}
-        onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault(); send();
-          }
-        }} />
-    </div><button className="send-btn" disabled={loading} onClick={() => send()}>{loading ? <span className="send-spinner" /> : '➤'}</button></div>
-      <div className="input-hint">{loading ? 'AI đang trả lời...' : 'Nhấn Enter để gửi, Shift+Enter để xuống dòng'}</div>
+    <div className={`input-area ${loading ? 'waiting' : ''}`}>
+      <div className="composer-shell">
+        <textarea className="composer-input" ref={inputRef} rows="1" value={input} readOnly={loading} autoFocus
+          aria-label="Nhập câu hỏi"
+          placeholder={loading ? 'Đợi AI trả lời xong...' : 'Giao việc hoặc nhập câu hỏi của bạn...'}
+          onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault(); send();
+            }
+          }} />
+        <div className="composer-toolbar">
+          <button className="composer-tool" type="button" title="Thêm nội dung" aria-label="Thêm nội dung"
+            onClick={() => inputRef.current?.focus()}><PlusIcon /></button>
+          <span className="composer-label"><SparkIcon /> Trợ lý tri thức</span>
+          <button className="send-btn" type="button" aria-label="Gửi câu hỏi"
+            disabled={loading || !input.trim()} onClick={() => send()}>
+            {loading ? <span className="send-spinner" /> : <SendIcon />}
+          </button>
+        </div>
+      </div>
+      <div className="quick-prompts" aria-label="Câu hỏi gợi ý">
+        {quickPrompts.map((prompt) => <button type="button" key={prompt.label} disabled={loading}
+          onClick={() => send(prompt.label)}>
+          <QuickPromptIcon type={prompt.icon} /><span>{prompt.label}</span>
+        </button>)}
+      </div>
+      <div className="input-hint">{loading ? 'AI đang trả lời...' : 'Enter để gửi · Shift + Enter để xuống dòng'}</div>
     </div>
     {taigaSubject !== null && <TaigaModal initialSubject={taigaSubject} onClose={() => setTaigaSubject(null)} onCreated={appendCreated} />}
   </>;
