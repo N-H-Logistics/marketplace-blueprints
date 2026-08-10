@@ -85,7 +85,7 @@ function Logo() {
   </svg>;
 }
 
-function Header({ agentName }) {
+function Header() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   useEffect(() => {
@@ -104,16 +104,24 @@ function Header({ agentName }) {
     ['https://wms.onflow.vn', 'Hệ thống kho'],
     ['https://ops.onflow.vn', 'Hệ thống vận hành'],
   ];
-  return <header>
-    <div className="header-logo"><Logo /></div>
-    <span className="header-title">{agentName}</span>
-    <span className="header-badge">Vận hành bởi Onflow.vn GenAI</span>
+  return <header id="top">
+    <a className="brand" href="#top" aria-label="Onflow Open Platform">
+      <span className="header-logo"><Logo /></span>
+      <span className="brand-name"><strong>Onflow</strong> Open Platform</span>
+    </a>
+    <nav className="main-nav" aria-label="Điều hướng chính">
+      <a href="#resources">Tài liệu <span className="nav-caret" /></a>
+      <a href="#support">Trung tâm hỗ trợ <span className="nav-caret" /></a>
+      <a href="#resources">Thông báo</a>
+      <a className="active" href="#assistant">AI Assistant <span className="nav-spark">✦</span></a>
+    </nav>
     <div className="header-actions" ref={menuRef}>
+      <button className="language-btn" type="button" aria-label="Chọn ngôn ngữ">VI <span className="nav-caret" /></button>
       <button className="header-action system-toggle" type="button" aria-expanded={open} onClick={(e) => {
         e.stopPropagation();
         setOpen((value) => !value);
       }}>
-        <span>Đăng nhập</span><span className="system-caret" aria-hidden="true" />
+        <span className="user-avatar">O</span><span className="system-caret" aria-hidden="true" />
       </button>
       {!open ? null : <nav className="system-menu" aria-label="Liên kết hệ thống">
         {systems.map(([url, label]) => <a key={url} href={url} target="_blank" rel="noreferrer">
@@ -259,7 +267,7 @@ function HistoryPanel({ history, onClear }) {
 
 function Sidebar({ history, onClear }) {
   const [tab, setTab] = useState('docs');
-  return <aside className="history-panel" aria-label="Tài liệu và lịch sử chat">
+  return <aside id="resources" className="history-panel" aria-label="Tài liệu và lịch sử chat">
     <div className="rail-tabs" role="tablist">
       <button className={`rail-tab ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>Tài liệu</button>
       <button className={`rail-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>
@@ -293,43 +301,43 @@ function Message({ message }) {
 
 function EmptyState({ onPrompt, disabled }) {
   const groups = [
-    ['Cần tra cứu chính sách?', 'Tìm nhanh quy định nội bộ, quyền lợi, trách nhiệm và các điểm cần lưu ý khi làm việc.',
+    ['Tra cứu & chính sách',
       ['Tôi muốn tìm quy định liên quan đến nhân sự', 'Tóm tắt các điểm quan trọng trong chính sách nội bộ']],
-    ['Không chắc phải làm bước nào?', 'Hỏi để biết quy trình cần theo, biểu mẫu cần dùng và bộ phận nào liên quan.',
-      ['Tôi cần xử lý một yêu cầu mới thì bắt đầu từ đâu?', 'Quy trình này cần biểu mẫu nào và ai phụ trách?']],
-    ['Cần báo lỗi hệ thống?', 'Tạo issue Taiga sau khi kiểm tra lại nội dung.', ['Tạo báo lỗi Taiga']],
+    ['Quy trình & hỗ trợ',
+      ['Tôi cần xử lý một yêu cầu mới thì bắt đầu từ đâu?', 'Tạo báo lỗi hệ thống trên Taiga']],
   ];
-  return <div className="empty-state"><div className="empty-header">
-    <div className="empty-icon"><Logo /></div><div className="empty-copy"><h2>Trợ lý tri thức Onflow.vn</h2>
-      <p>Chọn đúng nhóm câu hỏi hoặc nhập trực tiếp nội dung cần tra cứu. Trợ lý sẽ ưu tiên trả lời dựa trên kho tri thức đã cấu hình.</p>
-    </div></div>
-    <div className="prompt-sections">{groups.map(([title, copy, prompts]) => <section className="prompt-section" key={title}>
-      <h3>{title}</h3><p>{copy}</p><div className="prompt-list">{prompts.map((prompt) =>
-        <button className="prompt-btn" disabled={disabled} key={prompt} onClick={() => onPrompt(prompt)}>{prompt}</button>)}</div>
+  return <div id="support" className="empty-state">
+    <div className="prompt-sections">{groups.map(([title, prompts]) => <section className="prompt-section" key={title}>
+      <h3>{title}</h3><div className="prompt-list">{prompts.map((prompt) =>
+        <button className="prompt-btn" disabled={disabled} key={prompt} onClick={() => onPrompt(prompt)}>
+          <span className="prompt-search" aria-hidden="true" />{prompt}
+        </button>)}</div>
     </section>)}</div>
   </div>;
 }
 
-function PlusIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
-}
-
 function SendIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 11 6-6 6 6M12 5v14" /></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 4 15 8-15 8 3-8-3-8Zm3 8h12" /></svg>;
 }
 
-function SparkIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3ZM6 14l.8 2.2L9 17l-2.2.8L6 20l-.8-2.2L3 17l2.2-.8L6 14Zm11 0 1 2.8 3 1.2-3 1.2L17 22l-1-2.8-3-1.2 3-1.2L17 14Z" /></svg>;
-}
-
-function QuickPromptIcon({ type }) {
-  const paths = {
-    policy: <><path d="M6 3.5h9l3 3V20H6z" /><path d="M15 3.5V7h3M9 11h6M9 15h6" /></>,
-    process: <><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="6" cy="18" r="2" /><path d="M8 6h3a3 3 0 0 1 3 3v0a3 3 0 0 0 3 3M16 12h-2a3 3 0 0 0-3 3v0a3 3 0 0 1-3 3" /></>,
-    summary: <><path d="M5 4h14v16H5z" /><path d="M8.5 8H16M8.5 12H16M8.5 16H13" /></>,
-    bug: <><path d="M8 9h8v7a4 4 0 0 1-8 0zM10 9V7a2 2 0 0 1 4 0v2M4 12h4M16 12h4M5 18l3-2M19 18l-3-2M6 7l2 2M18 7l-2 2" /></>,
-  };
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[type]}</svg>;
+function Composer({ input, setInput, loading, send, inputRef, landing = false }) {
+  return <div className={`input-area ${landing ? 'landing-composer' : ''} ${loading ? 'waiting' : ''}`}>
+    <div className="composer-shell">
+      <textarea className="composer-input" ref={inputRef} rows="1" value={input} readOnly={loading} autoFocus
+        aria-label="Nhập câu hỏi"
+        placeholder={loading ? 'Đợi AI trả lời xong...' : 'Bạn cần hỗ trợ điều gì?'}
+        onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault(); send();
+          }
+        }} />
+      <button className="send-btn" type="button" aria-label="Gửi câu hỏi"
+        disabled={loading || !input.trim()} onClick={() => send()}>
+        {loading ? <span className="send-spinner" /> : <SendIcon />}
+      </button>
+    </div>
+    {!landing && <div className="input-hint">{loading ? 'AI đang trả lời...' : 'Enter để gửi · Shift + Enter để xuống dòng'}</div>}
+  </div>;
 }
 
 function isTaigaIntent(message) {
@@ -407,13 +415,6 @@ export default function App({ agentName }) {
   const [taigaSubject, setTaigaSubject] = useState(null);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
-  const quickPrompts = [
-    { label: 'Tra cứu chính sách', icon: 'policy' },
-    { label: 'Hướng dẫn quy trình', icon: 'process' },
-    { label: 'Tóm tắt tài liệu', icon: 'summary' },
-    { label: 'Tạo báo lỗi', icon: 'bug' },
-  ];
-
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
@@ -483,43 +484,18 @@ export default function App({ agentName }) {
   };
 
   return <>
-    <Header agentName={agentName} />
-    <Sidebar history={history} onClear={() => {
-      if (history.length && !window.confirm('Xóa toàn bộ lịch sử chat đã lưu trên trình duyệt này?')) return;
-      localStorage.removeItem(STORAGE_KEY);
-      setHistory([]);
-    }} />
-    <div className="chat-container" ref={chatRef}><div className="chat-inner">
-      {messages.length === 0 ? <EmptyState disabled={loading} onPrompt={send} /> : messages.map((message, index) => <Message key={message.id || index} message={message} />)}
-    </div></div>
-    <div className={`input-area ${loading ? 'waiting' : ''}`}>
-      <div className="composer-shell">
-        <textarea className="composer-input" ref={inputRef} rows="1" value={input} readOnly={loading} autoFocus
-          aria-label="Nhập câu hỏi"
-          placeholder={loading ? 'Đợi AI trả lời xong...' : 'Giao việc hoặc nhập câu hỏi của bạn...'}
-          onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault(); send();
-            }
-          }} />
-        <div className="composer-toolbar">
-          <button className="composer-tool" type="button" title="Thêm nội dung" aria-label="Thêm nội dung"
-            onClick={() => inputRef.current?.focus()}><PlusIcon /></button>
-          <span className="composer-label"><SparkIcon /> Trợ lý tri thức</span>
-          <button className="send-btn" type="button" aria-label="Gửi câu hỏi"
-            disabled={loading || !input.trim()} onClick={() => send()}>
-            {loading ? <span className="send-spinner" /> : <SendIcon />}
-          </button>
-        </div>
-      </div>
-      <div className="quick-prompts" aria-label="Câu hỏi gợi ý">
-        {quickPrompts.map((prompt) => <button type="button" key={prompt.label} disabled={loading}
-          onClick={() => send(prompt.label)}>
-          <QuickPromptIcon type={prompt.icon} /><span>{prompt.label}</span>
-        </button>)}
-      </div>
-      <div className="input-hint">{loading ? 'AI đang trả lời...' : 'Enter để gửi · Shift + Enter để xuống dòng'}</div>
-    </div>
+    <Header />
+    <main id="assistant" className={`workspace ${messages.length ? 'chatting' : 'landing-mode'}`}>
+      <div className="chat-container" ref={chatRef}><div className="chat-inner">
+        {messages.length === 0 ? <>
+          <div className="welcome-title"><span>✦</span><h1>Xin chào, mình là {agentName}</h1></div>
+          <p className="welcome-subtitle">Tra cứu tài liệu, quy trình và nhận hỗ trợ nhanh từ kho tri thức Onflow.</p>
+          <Composer landing input={input} setInput={setInput} loading={loading} send={send} inputRef={inputRef} />
+          <EmptyState disabled={loading} onPrompt={send} />
+        </> : messages.map((message, index) => <Message key={message.id || index} message={message} />)}
+      </div></div>
+      {messages.length > 0 && <Composer input={input} setInput={setInput} loading={loading} send={send} inputRef={inputRef} />}
+    </main>
     {taigaSubject !== null && <TaigaModal initialSubject={taigaSubject} onClose={() => setTaigaSubject(null)} onCreated={appendCreated} />}
   </>;
 }
