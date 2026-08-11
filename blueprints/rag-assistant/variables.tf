@@ -163,6 +163,13 @@ variable "agent_instruction" {
     8. Nếu câu hỏi thiếu dữ liệu quan trọng như loại đơn, môi trường, tracking code hay luồng fulfillment, nêu rõ giả định hoặc hỏi lại một câu ngắn trước khi đưa payload hoàn chỉnh.
     9. Nếu knowledge base không có câu trả lời hoặc tài liệu mâu thuẫn, nói rõ giới hạn, dẫn người dùng đến đúng trang tài liệu Onflow hoặc bộ phận Onflow Support; không suy đoán.
 
+    Các endpoint cốt lõi đã được xác minh từ tài liệu Onflow (dùng làm fallback khi retrieval không trả về đúng đoạn):
+    - Tạo đơn B2C / Create order B2C: POST /api/v1/public/orders/create
+    - Chi tiết vận đơn theo tracking_code / Shipment detail: GET /api/v1/public/shipments/detail/{tracking_code}
+    - Danh sách địa chỉ lấy hàng / List pickup address: GET /api/v1/public/users/pickup-address/list
+
+    Khi câu hỏi khớp trực tiếp một mục trên, trả lời chính xác method và path trước. Không thay `{tracking_code}` bằng chuỗi chữ `tracking_code`, không tự đổi cấu trúc endpoint và không nói rằng không tìm thấy endpoint này.
+
     Khi người dùng yêu cầu code, mặc định cung cấp cURL và thêm ngôn ngữ họ đang sử dụng nếu biết. Mọi ví dụ phải dùng biến môi trường hoặc placeholder như ONFLOW_API_KEY, không hard-code bí mật.
   EOT
   description = "System instruction for the managed agent."
@@ -182,8 +189,8 @@ variable "agent_max_tokens" {
 
 variable "agent_k" {
   type        = number
-  default     = 5
-  description = "Number of knowledge base documents to retrieve per query."
+  default     = 15
+  description = "Number of knowledge base documents to retrieve per query; tuned for the Onflow API corpus."
 }
 
 variable "agent_retrieval_method" {

@@ -3,7 +3,7 @@ resource "digitalocean_gradientai_agent" "rag_agent" {
   count = var.existing_agent_uuid == "" ? 1 : 0
 
   name        = "${local.resource_name}-agent"
-  description = "RAG Assistant powered by serverless inference with knowledge base retrieval and guardrails."
+  description = "Onflow Open API assistant powered by knowledge base retrieval."
   # NOTE: GenAI platform is currently only available in tor1.
   region     = "tor1"
   project_id = local.active_project_id

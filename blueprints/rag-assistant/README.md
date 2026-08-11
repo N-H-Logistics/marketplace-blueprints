@@ -99,7 +99,7 @@ Use the chat interface to ask questions. The assistant will search your knowledg
 | `agent_instruction` | *(see variables.tf)* | System instruction specialized for safe Onflow OMS API integration |
 | `agent_temperature` | `0` | Inference temperature (0 = deterministic) |
 | `agent_max_tokens` | `4096` | Maximum tokens in the agent response |
-| `agent_k` | `5` | Number of KB documents to retrieve per query |
+| `agent_k` | `15` | Number of KB documents retrieved per query, tuned for the Onflow API corpus |
 | `guardrail_jailbreak_uuid` | `""` | UUID of the jailbreak detection guardrail |
 | `guardrail_content_mod_uuid` | `""` | UUID of the content moderation guardrail |
 | `guardrail_sensitive_data_uuid` | `""` | UUID of the sensitive data detection guardrail |
