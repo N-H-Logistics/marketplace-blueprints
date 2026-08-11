@@ -505,6 +505,77 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 0.92em;
     }
+    .code-block {
+      width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid #273449;
+      border-radius: 10px;
+      background: #0f172a;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.13);
+    }
+    .code-block-header {
+      min-height: 38px;
+      padding: 0 12px 0 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid #273449;
+      background: #172033;
+    }
+    .code-language {
+      color: #cbd5e1;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .code-copy {
+      min-width: 72px;
+      padding: 5px 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 650;
+      transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .code-copy:hover {
+      border-color: #3b4a62;
+      background: #202b40;
+      color: #f8fafc;
+    }
+    .code-copy:focus-visible {
+      outline: 2px solid #fb923c;
+      outline-offset: 2px;
+    }
+    .code-block pre {
+      margin: 0;
+      padding: 16px;
+      overflow-x: auto;
+      color: #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      tab-size: 2;
+      scrollbar-color: #475569 #0f172a;
+    }
+    .formatted-answer .code-block code {
+      display: block;
+      min-width: max-content;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      white-space: pre;
+    }
     .formatted-answer ol,
     .formatted-answer ul {
       margin: 2px 0 2px 22px;

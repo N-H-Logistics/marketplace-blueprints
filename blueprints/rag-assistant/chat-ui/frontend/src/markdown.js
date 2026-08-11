@@ -14,6 +14,45 @@ function renderInlineMarkdown(value) {
     .replace(/\*([^*]+)\*/g, '<em>$1</em>');
 }
 
+function codeLanguageLabel(language) {
+  const normalized = (language || '').toLowerCase();
+  if (['bash', 'sh', 'shell', 'zsh'].includes(normalized)) return 'Bash';
+  if (normalized === 'json') return 'JSON';
+  if (normalized === 'javascript' || normalized === 'js') return 'JavaScript';
+  if (normalized === 'python' || normalized === 'py') return 'Python';
+  return language || 'Code';
+}
+
+function renderCodeBlock(language, lines) {
+  const label = escapeHTML(codeLanguageLabel(language));
+  const code = escapeHTML(lines.join('\n'));
+  return `
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-language">${label}</span>
+        <button class="code-copy" type="button" aria-label="Sao chép đoạn mã">Sao chép</button>
+      </div>
+      <pre><code>${code}</code></pre>
+    </div>
+  `;
+}
+
+function bindCodeCopyButtons(bubble) {
+  bubble.querySelectorAll('.code-copy').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const code = button.closest('.code-block')?.querySelector('code')?.textContent || '';
+      try {
+        await navigator.clipboard.writeText(code);
+        button.textContent = 'Đã sao chép';
+        window.setTimeout(() => { button.textContent = 'Sao chép'; }, 1600);
+      } catch {
+        button.textContent = 'Không thể sao chép';
+        window.setTimeout(() => { button.textContent = 'Sao chép'; }, 1600);
+      }
+    });
+  });
+}
+
 function statusClass(value) {
   const normalized = (value || '').toLowerCase();
   if (normalized.includes('done') || normalized.includes('đã đóng')) return 'status-done';
@@ -136,6 +175,8 @@ export function renderFormattedAnswer(bubble, text) {
   let listType = null;
   let listItems = [];
   let paragraphLines = [];
+  let codeLanguage = null;
+  let codeLines = [];
 
   function flushParagraph() {
     if (paragraphLines.length === 0) return;
@@ -150,8 +191,33 @@ export function renderFormattedAnswer(bubble, text) {
     listItems = [];
   }
 
+  function flushCode() {
+    if (codeLanguage === null) return;
+    blocks.push(renderCodeBlock(codeLanguage, codeLines));
+    codeLanguage = null;
+    codeLines = [];
+  }
+
   trimmed.split('\n').forEach((rawLine) => {
     const line = rawLine.trim();
+    const fence = line.match(/^```([\w+-]*)\s*$/);
+
+    if (fence) {
+      if (codeLanguage === null) {
+        flushParagraph();
+        flushList();
+        codeLanguage = fence[1] || '';
+      } else {
+        flushCode();
+      }
+      return;
+    }
+
+    if (codeLanguage !== null) {
+      codeLines.push(rawLine);
+      return;
+    }
+
     const ordered = line.match(/^\d+[.)]\s+(.+)$/);
     const unordered = line.match(/^[-*]\s+(.+)$/);
     const heading = line.match(/^#{1,3}\s+(.+)$/);
@@ -186,5 +252,7 @@ export function renderFormattedAnswer(bubble, text) {
 
   flushParagraph();
   flushList();
+  flushCode();
   bubble.innerHTML = '<div class="formatted-answer">' + blocks.join('') + '</div>';
+  bindCodeCopyButtons(bubble);
 }
