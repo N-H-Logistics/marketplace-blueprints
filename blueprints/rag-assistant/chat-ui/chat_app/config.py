@@ -9,6 +9,7 @@ AGENT_UUID = os.environ["AGENT_UUID"]
 DO_API_TOKEN = os.environ["DO_API_TOKEN"]
 AGENT_NAME = os.environ.get("AGENT_NAME", "RAG Assistant")
 DO_API_BASE = os.environ.get("DO_API_BASE", "https://api.digitalocean.com")
+CHAT_COMPLETION_MAX_TOKENS = int(os.environ.get("CHAT_COMPLETION_MAX_TOKENS", "4096"))
 
 TAIGA_BASE_URL = os.environ.get("TAIGA_BASE_URL", "").rstrip("/")
 TAIGA_USERNAME = os.environ.get("TAIGA_USERNAME", "")

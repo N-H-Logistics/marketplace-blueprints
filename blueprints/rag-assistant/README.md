@@ -1,9 +1,9 @@
 # Welcome to the DigitalOcean RAG Assistant Terraform Stack!
 
-This stack deploys a fully functional Retrieval-Augmented Generation (RAG) assistant on DigitalOcean, including:
+This stack deploys a fully functional Retrieval-Augmented Generation (RAG) assistant for Onflow OMS API integration on DigitalOcean, including:
 
 - A **managed GenAI agent** with serverless inference for question answering.
-- A **Knowledge Base** (KBaaS) for document storage and semantic retrieval.
+- A **Knowledge Base** (KBaaS) seeded from the complete [Onflow API documentation](https://developers.onflow.vn/).
 - An **App Platform** service hosting a chat UI that proxies requests to the agent.
 - **Guardrails** for jailbreak detection, content moderation, and sensitive data protection.
 - A **DigitalOcean project** to group all provisioned resources.
@@ -49,15 +49,28 @@ After the stack is deployed, allow 2-3 minutes for the knowledge base to finish 
 
 The chat UI URL is available in the Terraform outputs (`chat_ui_url`). Open it in your browser to see the assistant interface.
 
-### 2. Upload your documents
+### 2. Use the Onflow API knowledge base
 
-The knowledge base is seeded with a placeholder DigitalOcean docs page. To use your own data:
+The knowledge base crawls the Onflow developer site, covering getting started, common errors, API references, status codes, and webhook contracts. After deployment, wait for its initial indexing to complete before asking questions.
+
+Example questions:
+
+- `Hướng dẫn xác thực và gọi API Onflow trên môi trường staging.`
+- `Tạo đơn B2C cần endpoint, header và các field bắt buộc nào?`
+- `So sánh quy trình tạo đơn B2C và B2B.`
+- `Viết ví dụ cURL lấy chi tiết shipment theo tracking_code.`
+- `Thiết kế consumer an toàn cho webhook cập nhật trạng thái đơn hàng.`
+- `Giải thích mã trạng thái shipment này và bước xử lý tiếp theo.`
+
+The assistant is instructed to preserve exact endpoint and field names, cite the source documentation, avoid inventing undocumented contracts, protect API keys, and recommend Staging before Production.
+
+To add internal runbooks or other documents alongside the Onflow API documentation:
 
 1. Go to the [DigitalOcean console](https://cloud.digitalocean.com/).
 2. Navigate to **GenAI Platform > Knowledge Bases**.
 3. Select the knowledge base created by this stack (named `<basename>-<suffix>-kb`).
 4. Add your documents — supported formats include web URLs, PDFs, and plain text.
-5. Wait for indexing to complete, then ask the assistant questions about your content.
+5. Wait for indexing to complete, then ask the assistant questions about the added content.
 
 ### 3. Ask questions
 
@@ -83,7 +96,7 @@ Use the chat interface to ask questions. The assistant will search your knowledg
 | `taiga_auth_token` | `""` | Optional Taiga auth token used instead of username/password |
 | `taiga_project_id` | `""` | Taiga project ID to search |
 | `taiga_project_slug` | `""` | Taiga project slug used when project ID is not set |
-| `agent_instruction` | *(see variables.tf)* | System instruction for the agent |
+| `agent_instruction` | *(see variables.tf)* | System instruction specialized for safe Onflow OMS API integration |
 | `agent_temperature` | `0` | Inference temperature (0 = deterministic) |
 | `agent_max_tokens` | `4096` | Maximum tokens in the agent response |
 | `agent_k` | `5` | Number of KB documents to retrieve per query |
@@ -110,6 +123,7 @@ Use the chat interface to ask questions. The assistant will search your knowledg
 - **Inference**: Serverless — no GPU instances to manage. The model is configurable via model presets when deployed through do-terraform.
 - **Embeddings**: Qwen3 0.6B is used by default for document embedding.
 - **Guardrails**: Jailbreak detection, content moderation, and sensitive data protection are attached post-creation via the DO API (terraform provider limitation).
+- **Knowledge source**: The initial web crawler indexes `https://developers.onflow.vn/`, including linked API, status, and webhook documentation.
 - **KB indexing**: A `null_resource` provisioner waits up to 10 minutes for knowledge base indexing to complete before attaching it to the agent.
 - **Chat UI**: A Python FastAPI application deployed on App Platform. It discovers the agent endpoint and creates an API key at startup.
 - **Resource naming**: All resources are suffixed with a random 4-character string to avoid naming collisions.
@@ -122,7 +136,7 @@ The chat UI uses React + Vite for the browser application and FastAPI for the AP
 - Proxies messages to the managed agent's OpenAI-compatible chat completions endpoint.
 - Auto-discovers the agent's deployment URL and creates an API key on startup.
 - Maintains conversation history for multi-turn interactions.
-- Optionally enriches answers with realtime Taiga issues, tasks, and user stories when Taiga variables are configured.
+- Keeps the user experience focused on Onflow Open API authentication, endpoints, payloads, statuses, errors, and webhooks.
 
 ### Local development
 

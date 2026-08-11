@@ -1,5 +1,6 @@
 # Knowledge base for RAG document retrieval.
-# Seeded with a placeholder DO docs page. Customer adds their own documents post-deploy.
+# Seeded with the complete Onflow API documentation. The site exposes developer
+# guides, endpoint references, status codes, and webhook contracts below this URL.
 # NOTE: Knowledge bases currently only support the tor1 region.
 resource "digitalocean_gradientai_knowledge_base" "kb" {
   name                 = "${local.resource_name}-kb"
@@ -10,7 +11,7 @@ resource "digitalocean_gradientai_knowledge_base" "kb" {
 
   datasources {
     web_crawler_data_source {
-      base_url        = "https://docs.digitalocean.com/products/genai-platform/getting-started/quickstart/"
+      base_url        = "https://developers.onflow.vn/"
       crawling_option = "PATH"
     }
   }

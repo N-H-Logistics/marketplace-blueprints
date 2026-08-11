@@ -12,7 +12,7 @@ from chat_app.routes import router
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-app = FastAPI(title="RAG Assistant")
+app = FastAPI(title="Onflow Open API Assistant")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(router)
 

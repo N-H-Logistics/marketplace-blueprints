@@ -3,12 +3,33 @@ import logging
 
 import httpx
 
-from . import config, taiga
+from . import config
 
 logger = logging.getLogger("chat-ui")
 
 ENDPOINT = None
 API_KEY = None
+
+ANSWER_STYLE_SYSTEM_PROMPT = """
+Bạn là trợ lý kỹ thuật chỉ phục vụ việc tích hợp Onflow Open API.
+Phạm vi hỗ trợ gồm xác thực, môi trường, endpoint, request/response, đơn hàng,
+sản phẩm, tồn kho, vận chuyển, hoàn hàng, mã trạng thái, webhook và xử lý lỗi API.
+Nếu yêu cầu không liên quan trực tiếp đến tích hợp Onflow Open API, hãy từ chối
+ngắn gọn và hướng người dùng quay lại một chủ đề tích hợp API phù hợp.
+Hãy trả lời bằng tiếng Việt với giọng nhẹ nhàng, điềm tĩnh và khoa học.
+Ưu tiên cấu trúc ngắn gọn:
+- Kết luận chính trước.
+- Cơ sở hoặc dữ kiện liên quan sau.
+- Nếu dữ liệu chưa đủ, nói rõ mức độ chắc chắn và gợi ý cách kiểm chứng.
+Không phóng đại, không suy đoán như sự thật, không bịa chính sách hoặc trạng thái.
+Nếu câu trả lời dài, hãy chia thành các mục hoàn chỉnh và luôn kết thúc trọn ý; không dừng giữa câu.
+Khi câu hỏi có rủi ro vận hành, hãy nhắc người dùng đối chiếu với tài liệu Open API gốc hoặc Onflow Support.
+""".strip()
+
+TRUNCATION_NOTICE = (
+    "\n\nLưu ý: Câu trả lời có thể đã chạm giới hạn độ dài của model. "
+    "Bạn có thể hỏi tiếp: \"tiếp tục từ phần đang dở\" để mình bổ sung phần còn lại."
+)
 
 
 def ready():
@@ -46,25 +67,8 @@ def discover():
 
 
 async def build_messages(message, history):
-    messages = [{"role": h.get("role", "user"), "content": h.get("content", "")} for h in history]
-
-    if taiga.is_taiga_question(message):
-        try:
-            taiga_result = await taiga.search(message, config.TAIGA_MAX_RESULTS)
-            taiga_context = taiga.format_context(taiga_result.get("items", []))
-            if taiga_context:
-                messages.append(
-                    {
-                        "role": "system",
-                        "content": (
-                            "Nếu câu hỏi liên quan Taiga, hãy dùng dữ liệu realtime dưới đây. "
-                            "Trả lời ngắn gọn bằng tiếng Việt, không tự bịa thêm trạng thái.\n\n"
-                            f"{taiga_context}"
-                        ),
-                    }
-                )
-        except Exception:
-            logger.exception("Could not enrich chat with Taiga context")
+    messages = [{"role": "system", "content": ANSWER_STYLE_SYSTEM_PROMPT}]
+    messages.extend({"role": h.get("role", "user"), "content": h.get("content", "")} for h in history)
 
     messages.append({"role": "user", "content": message})
     return messages
@@ -74,12 +78,19 @@ def _auth_headers():
     return {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 
+def _chat_payload(messages, stream=False):
+    payload = {"messages": messages, "max_tokens": config.CHAT_COMPLETION_MAX_TOKENS}
+    if stream:
+        payload["stream"] = True
+    return payload
+
+
 async def complete(message, history):
     messages = await build_messages(message, history)
 
     try:
         async with httpx.AsyncClient(timeout=90.0) as client:
-            resp = await client.post(ENDPOINT, json={"messages": messages}, headers=_auth_headers())
+            resp = await client.post(ENDPOINT, json=_chat_payload(messages), headers=_auth_headers())
     except httpx.TimeoutException:
         return 504, {"error": "Agent phan hoi qua cham. Vui long thu lai sau it phut."}
     except httpx.RequestError as exc:
@@ -100,12 +111,18 @@ async def complete(message, history):
         return resp.status_code, {"error": error}
 
     content = ""
+    finish_reason = None
     if "choices" in data and len(data["choices"]) > 0:
-        content = data["choices"][0].get("message", {}).get("content", "")
+        choice = data["choices"][0]
+        content = choice.get("message", {}).get("content", "")
+        finish_reason = choice.get("finish_reason")
     elif "detail" in data:
         content = f"Error: {data['detail']}"
     elif "message" in data:
         content = data["message"]
+
+    if finish_reason == "length":
+        content = f"{content.rstrip()}{TRUNCATION_NOTICE}"
 
     return 200, {"content": content, "usage": data.get("usage")}
 
@@ -119,7 +136,7 @@ async def stream(message, history):
             async with client.stream(
                 "POST",
                 ENDPOINT,
-                json={"messages": messages, "stream": True},
+                json=_chat_payload(messages, stream=True),
                 headers=_auth_headers(),
             ) as resp:
                 if resp.status_code >= 400:
@@ -158,6 +175,9 @@ async def stream(message, history):
                         if chunk:
                             streamed_any = True
                             yield chunk
+                        if choice.get("finish_reason") == "length":
+                            yield TRUNCATION_NOTICE
+                            return
                     elif "message" in data:
                         streamed_any = True
                         yield data["message"]

@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  createTaigaIssue,
-  deleteKnowledgeBaseDataSource,
-  fetchKnowledgeBases,
-  fetchTaigaMetadata,
-  streamChat,
-  uploadKnowledgeBaseFile,
-} from './api.js';
+import { streamChat } from './api.js';
 import { renderFormattedAnswer } from './markdown.js';
 
 const STORAGE_KEY = 'onflow-rag-chat-history';
 const MAX_HISTORY = 50;
-const FILE_TYPES = '.pdf,.txt,.md,.markdown,.html,.csv,.docx';
 
 function createClientId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -86,196 +78,23 @@ function Logo() {
 }
 
 function Header() {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef(null);
-  useEffect(() => {
-    const close = (event) => {
-      if (event.key === 'Escape' || (menuRef.current && !menuRef.current.contains(event.target))) setOpen(false);
-    };
-    document.addEventListener('click', close);
-    document.addEventListener('keydown', close);
-    return () => {
-      document.removeEventListener('click', close);
-      document.removeEventListener('keydown', close);
-    };
-  }, []);
-  const systems = [
-    ['https://oms.onflow.vn', 'Hệ thống đơn hàng'],
-    ['https://wms.onflow.vn', 'Hệ thống kho'],
-    ['https://ops.onflow.vn', 'Hệ thống vận hành'],
-  ];
   return <header id="top">
-    <a className="brand" href="#top" aria-label="Onflow Open Platform">
+    <a className="brand" href="#top" aria-label="Onflow Open API">
       <span className="header-logo"><Logo /></span>
-      <span className="brand-name"><strong>Onflow</strong> Open Platform</span>
+      <span className="brand-name"><strong>Onflow</strong> Open API</span>
     </a>
-    <nav className="main-nav" aria-label="Điều hướng chính">
-      <a href="#resources">Tài liệu <span className="nav-caret" /></a>
-      <a href="#support">Trung tâm hỗ trợ <span className="nav-caret" /></a>
-      <a href="#resources">Thông báo</a>
-      <a className="active" href="#assistant">AI Assistant <span className="nav-spark">✦</span></a>
+    <nav className="main-nav" aria-label="Tài nguyên tích hợp Open API">
+      <a href="https://developers.onflow.vn/doc-611811" target="_blank" rel="noreferrer">Bắt đầu</a>
+      <a href="https://developers.onflow.vn/api-9196579" target="_blank" rel="noreferrer">API Reference</a>
+      <a href="https://developers.onflow.vn/doc-794649" target="_blank" rel="noreferrer">Webhooks</a>
+      <a className="active" href="#assistant">Trợ lý API <span className="nav-spark">✦</span></a>
     </nav>
-    <div className="header-actions" ref={menuRef}>
-      <button className="language-btn" type="button" aria-label="Chọn ngôn ngữ">VI <span className="nav-caret" /></button>
-      <button className="header-action system-toggle" type="button" aria-expanded={open} onClick={(e) => {
-        e.stopPropagation();
-        setOpen((value) => !value);
-      }}>
-        <span className="user-avatar">O</span><span className="system-caret" aria-hidden="true" />
-      </button>
-      {!open ? null : <nav className="system-menu" aria-label="Liên kết hệ thống">
-        {systems.map(([url, label]) => <a key={url} href={url} target="_blank" rel="noreferrer">
-          <span className="system-menu-icon"><Logo /></span><span>{label}</span>
-          <span className="system-menu-open">↗</span>
-        </a>)}
-      </nav>}
+    <div className="header-actions">
+      <a className="header-action system-toggle" href="https://developers.onflow.vn/" target="_blank" rel="noreferrer">
+        Mở tài liệu <span aria-hidden="true">↗</span>
+      </a>
     </div>
   </header>;
-}
-
-function formatBytes(bytes) {
-  if (!bytes) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let value = bytes;
-  let index = 0;
-  while (value >= 1024 && index < units.length - 1) {
-    value /= 1024;
-    index += 1;
-  }
-  return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
-}
-
-function DeleteModal({ source, onCancel, onConfirm, busy }) {
-  useEffect(() => {
-    const close = (event) => event.key === 'Escape' && !busy && onCancel();
-    document.addEventListener('keydown', close);
-    return () => document.removeEventListener('keydown', close);
-  }, [busy, onCancel]);
-  return <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
-    <div className="kb-delete-modal" role="dialog" aria-modal="true">
-      <div className="kb-delete-modal-icon"><span>×</span></div>
-      <div className="kb-delete-modal-content">
-        <h2>Xoá tài liệu?</h2>
-        <p>Tài liệu <strong>{source.name}</strong> sẽ bị loại khỏi Knowledge Base. Hành động này không thể hoàn tác.</p>
-        <div className="kb-delete-modal-note">Thao tác xoá không tạo indexing job nên sẽ không có phần trăm tiến trình.</div>
-        <div className="kb-delete-modal-actions">
-          <button className="taiga-action" type="button" disabled={busy} onClick={onCancel}>Hủy</button>
-          <button className="taiga-action danger" type="button" disabled={busy} onClick={onConfirm}>
-            {busy ? 'Đang xoá...' : 'Xoá tài liệu'}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>;
-}
-
-function KnowledgePanel() {
-  const [knowledgeBases, setKnowledgeBases] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
-  const fileRef = useRef(null);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchKnowledgeBases();
-      setKnowledgeBases(data.knowledge_bases || []);
-    } catch (error) {
-      setStatus({ type: 'error', text: error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => { load(); }, []);
-
-  const sources = knowledgeBases.flatMap((kb) => (kb.datasources || []).map((source) => ({
-    ...source, kbUuid: kb.uuid, kbName: kb.name,
-  })));
-
-  const upload = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file || !knowledgeBases[0]) return;
-    setStatus({ type: 'loading', text: `Đang tải ${file.name}...` });
-    try {
-      await uploadKnowledgeBaseFile(knowledgeBases[0].uuid, file);
-      setStatus({ type: 'success', text: 'Đã thêm tài liệu. Knowledge Base đang lập chỉ mục.' });
-      await load();
-    } catch (error) {
-      setStatus({ type: 'error', text: error.message });
-    }
-  };
-
-  const remove = async () => {
-    setDeleteBusy(true);
-    setStatus({ type: 'loading', text: `Đang xoá ${deleting.name} khỏi Knowledge Base...` });
-    try {
-      await deleteKnowledgeBaseDataSource(deleting.kbUuid, deleting.uuid);
-      setDeleting(null);
-      setStatus({ type: 'success', text: 'Đã xoá tài liệu khỏi Knowledge Base. Không cần chờ re-index.' });
-      await load();
-    } catch (error) {
-      setStatus({ type: 'error', text: error.message });
-    } finally {
-      setDeleteBusy(false);
-    }
-  };
-
-  return <>
-    <div className="kb-overview">
-      <div className="kb-overview-header">
-        <div><div className="kb-overview-title">Tài liệu hiện có</div>
-          <div className="kb-overview-meta">{loading ? 'Đang tải...' : `${sources.length} tài liệu`}</div>
-        </div>
-        <button className="kb-upload-btn" type="button" disabled={!knowledgeBases.length || status?.type === 'loading'} onClick={() => fileRef.current?.click()}>+ Thêm tài liệu</button>
-        <input ref={fileRef} type="file" accept={FILE_TYPES} hidden onChange={upload} />
-      </div>
-      {status && <div className={`kb-upload-status ${status.type}`} role="status">{status.text}</div>}
-      <div className="kb-overview-body">
-        {loading ? <div className="kb-status">Đang lấy thông tin từ Knowledge Base.</div>
-          : sources.length === 0 ? <div className="kb-status">Chưa có datasource nào trong Knowledge Base đang gắn với agent.</div>
-            : <div className="kb-list">{sources.map((source) => <div className="kb-item" key={source.uuid}>
-              <div className={`kb-file-icon ${source.type === 'web' ? 'web' : source.name?.toLowerCase().endsWith('.pdf') ? 'pdf' : 'file'}`}>▤</div>
-              <div className="kb-item-main">
-                <div className="kb-item-name" title={source.name}>{source.name}</div>
-                <div className="kb-item-meta">{[source.type === 'web' ? 'Web' : 'Tệp', formatBytes(source.size_bytes)].filter(Boolean).join(' · ')}</div>
-              </div>
-              <button className="kb-delete-btn" type="button" title={`Xoá ${source.name}`} onClick={() => setDeleting(source)}>×</button>
-            </div>)}</div>}
-      </div>
-      <div className="kb-delete-note">Khi xoá tài liệu, Knowledge Base sẽ loại bỏ datasource trực tiếp. Thao tác này không tạo indexing job nên sẽ không có phần trăm tiến trình.</div>
-    </div>
-    {deleting && <DeleteModal source={deleting} busy={deleteBusy} onCancel={() => setDeleting(null)} onConfirm={remove} />}
-  </>;
-}
-
-function HistoryPanel({ history, onClear }) {
-  return <><div className="history-panel-header">
-    <div className="history-panel-title">Lịch sử chat</div>
-    <div className="history-panel-actions"><button className="history-panel-btn" onClick={onClear}>Xóa</button></div>
-  </div>
-  <div className="history-list">{history.length === 0
-    ? <div className="history-empty">Chưa có lịch sử chat được lưu trên trình duyệt này.</div>
-    : [...history].reverse().map((message, index) => <details className="history-item" key={`${index}-${message.content}`}>
-      <summary className="history-role">{message.role === 'user' ? 'Bạn' : 'AI'}</summary>
-      <div className="history-text">{message.content}</div>
-    </details>)}
-  </div></>;
-}
-
-function Sidebar({ history, onClear }) {
-  const [tab, setTab] = useState('docs');
-  return <aside id="resources" className="history-panel" aria-label="Tài liệu và lịch sử chat">
-    <div className="rail-tabs" role="tablist">
-      <button className={`rail-tab ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>Tài liệu</button>
-      <button className={`rail-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>
-        <span>Lịch sử</span><span className="history-count">{history.length}</span>
-      </button>
-    </div>
-    <section className="rail-section active">{tab === 'docs' ? <KnowledgePanel /> : <HistoryPanel history={history} onClear={onClear} />}</section>
-  </aside>;
 }
 
 function Markdown({ text }) {
@@ -301,12 +120,14 @@ function Message({ message }) {
 
 function EmptyState({ onPrompt, disabled }) {
   const groups = [
-    ['Tra cứu & chính sách',
-      ['Tôi muốn tìm quy định liên quan đến nhân sự', 'Tóm tắt các điểm quan trọng trong chính sách nội bộ']],
-    ['Quy trình & hỗ trợ',
-      ['Tôi cần xử lý một yêu cầu mới thì bắt đầu từ đâu?', 'Tạo báo lỗi hệ thống trên Taiga']],
+    ['Bắt đầu tích hợp',
+      ['Hướng dẫn xác thực Onflow API trên môi trường staging', 'Giải thích cấu trúc response và các lỗi API thường gặp']],
+    ['Đơn hàng & vận chuyển',
+      ['Tạo đơn B2C cần endpoint và các field bắt buộc nào?', 'Viết ví dụ cURL lấy chi tiết shipment theo tracking_code']],
+    ['Webhook & trạng thái',
+      ['Thiết kế consumer an toàn cho webhook cập nhật đơn hàng', 'Giải thích các mã trạng thái shipment và bước xử lý tiếp theo']],
   ];
-  return <div id="support" className="empty-state">
+  return <div className="empty-state">
     <div className="prompt-sections">{groups.map(([title, prompts]) => <section className="prompt-section" key={title}>
       <h3>{title}</h3><div className="prompt-list">{prompts.map((prompt) =>
         <button className="prompt-btn" disabled={disabled} key={prompt} onClick={() => onPrompt(prompt)}>
@@ -324,8 +145,8 @@ function Composer({ input, setInput, loading, send, inputRef, landing = false })
   return <div className={`input-area ${landing ? 'landing-composer' : ''} ${loading ? 'waiting' : ''}`}>
     <div className="composer-shell">
       <textarea className="composer-input" ref={inputRef} rows="1" value={input} readOnly={loading} autoFocus
-        aria-label="Nhập câu hỏi"
-        placeholder={loading ? 'Đợi AI trả lời xong...' : 'Bạn cần hỗ trợ điều gì?'}
+        aria-label="Nhập câu hỏi về Onflow Open API"
+        placeholder={loading ? 'Đợi trợ lý trả lời xong...' : 'Hỏi về endpoint, payload, trạng thái hoặc webhook...'}
         onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault(); send();
@@ -336,65 +157,7 @@ function Composer({ input, setInput, loading, send, inputRef, landing = false })
         {loading ? <span className="send-spinner" /> : <SendIcon />}
       </button>
     </div>
-    {!landing && <div className="input-hint">{loading ? 'AI đang trả lời...' : 'Enter để gửi · Shift + Enter để xuống dòng'}</div>}
-  </div>;
-}
-
-function isTaigaIntent(message) {
-  const text = message.toLowerCase();
-  return ['tạo', 'tao', 'thêm', 'them', 'ghi nhận'].some((word) => text.includes(word))
-    && ['báo lỗi', 'bao loi', 'lỗi', 'bug', 'issue', 'ticket'].some((word) => text.includes(word));
-}
-
-function TaigaModal({ initialSubject, onClose, onCreated }) {
-  const [metadata, setMetadata] = useState(null);
-  const [form, setForm] = useState({ subject: initialSubject, description: '', type: '', status: '', priority: '', severity: '', assigned_to: '' });
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    fetchTaigaMetadata().then((data) => {
-      setMetadata(data);
-      setForm((value) => ({ ...value, ...data.defaults, assigned_to: '' }));
-    }).catch((err) => setError(err.message));
-  }, []);
-  const fields = [['type', 'Loại', 'types'], ['status', 'Trạng thái', 'statuses'], ['priority', 'Ưu tiên', 'priorities'], ['severity', 'Mức độ', 'severities']];
-  const submit = async (event) => {
-    event.preventDefault();
-    if (!form.subject.trim()) return setError('Vui lòng nhập tiêu đề báo lỗi.');
-    setBusy(true);
-    setError('');
-    try {
-      const data = await createTaigaIssue(form);
-      const issue = data.issue || {};
-      onCreated(`Đã tạo báo lỗi Taiga:\n- issue #${issue.ref || issue.id}: ${issue.subject || form.subject} | ${issue.status || 'New'} | ${issue.assigned_to || 'chưa gán'}`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-    <div className="taiga-modal" role="dialog" aria-modal="true">
-      <div className="taiga-modal-header"><div><div className="taiga-modal-title">Tạo báo lỗi Taiga</div>
-        <div className="taiga-modal-subtitle">Kiểm tra lại nội dung trước khi tạo issue trên Taiga.</div></div>
-        <button className="taiga-modal-close" disabled={busy} onClick={onClose}>×</button></div>
-      <form className="taiga-modal-body" onSubmit={submit}>
-        {error && <div className="taiga-form-error">{error}</div>}
-        <div className="taiga-form-grid">
-          <div className="taiga-field full"><label>Tiêu đề lỗi</label><input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} maxLength="500" /></div>
-          <div className="taiga-field full"><label>Mô tả chi tiết</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-          {fields.map(([name, label, key]) => <div className="taiga-field" key={name}><label>{label}</label>
-            <select value={form[name] || ''} onChange={(e) => setForm({ ...form, [name]: e.target.value })}>
-              {(metadata?.[key] || []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-            </select></div>)}
-          <div className="taiga-field full"><label>Người phụ trách</label><select value={form.assigned_to} onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}>
-            <option value="">Chưa gán</option>{(metadata?.members || []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-          </select></div>
-        </div>
-        <div className="taiga-modal-actions"><button className="taiga-action" type="button" disabled={busy} onClick={onClose}>Hủy</button>
-          <button className="taiga-action primary" disabled={busy || !metadata}>{busy ? 'Đang tạo...' : 'Tạo báo lỗi'}</button></div>
-      </form>
-    </div>
+    {!landing && <div className="input-hint">{loading ? 'Trợ lý API đang trả lời...' : 'Enter để gửi · Shift + Enter để xuống dòng'}</div>}
   </div>;
 }
 
@@ -407,12 +170,11 @@ function loadHistory() {
   }
 }
 
-export default function App({ agentName }) {
+export default function App() {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState(loadHistory);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [taigaSubject, setTaigaSubject] = useState(null);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
   useEffect(() => {
@@ -429,23 +191,12 @@ export default function App({ agentName }) {
     setHistory(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   };
-  const appendCreated = (content) => {
-    const message = { role: 'assistant', content };
-    setMessages((items) => [...items, message]);
-    save([message]);
-    setTaigaSubject(null);
-  };
   const send = async (value = input) => {
     const content = value.trim();
     if (!content || loading) return;
     const user = { role: 'user', content };
     setMessages((items) => [...items, user]);
     setInput('');
-    if (isTaigaIntent(content)) {
-      save([user]);
-      setTaigaSubject(content.replace(/^(tạo|thêm)\s+(báo lỗi|bug|issue)\s*/i, ''));
-      return;
-    }
     setLoading(true);
     const assistantId = createClientId();
     setMessages((items) => [...items, { id: assistantId, role: 'assistant', content: '', streaming: true }]);
@@ -488,14 +239,13 @@ export default function App({ agentName }) {
     <main id="assistant" className={`workspace ${messages.length ? 'chatting' : 'landing-mode'}`}>
       <div className="chat-container" ref={chatRef}><div className="chat-inner">
         {messages.length === 0 ? <>
-          <div className="welcome-title"><span>✦</span><h1>Xin chào, mình là {agentName}</h1></div>
-          <p className="welcome-subtitle">Tra cứu tài liệu, quy trình và nhận hỗ trợ nhanh từ kho tri thức Onflow.</p>
+          <div className="welcome-title"><span>✦</span><h1>Trợ lý tích hợp Onflow Open API</h1></div>
+          <p className="welcome-subtitle">Hỗ trợ tra cứu endpoint, payload, mã trạng thái, webhook và viết mã tích hợp dựa trên tài liệu Onflow.</p>
           <Composer landing input={input} setInput={setInput} loading={loading} send={send} inputRef={inputRef} />
           <EmptyState disabled={loading} onPrompt={send} />
         </> : messages.map((message, index) => <Message key={message.id || index} message={message} />)}
       </div></div>
       {messages.length > 0 && <Composer input={input} setInput={setInput} loading={loading} send={send} inputRef={inputRef} />}
     </main>
-    {taigaSubject !== null && <TaigaModal initialSubject={taigaSubject} onClose={() => setTaigaSubject(null)} onCreated={appendCreated} />}
   </>;
 }

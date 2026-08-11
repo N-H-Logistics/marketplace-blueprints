@@ -123,14 +123,6 @@ async def chat(request: Request):
     message = body.get("message", "")
     history = body.get("history", [])
 
-    if taiga.is_taiga_question(message):
-        try:
-            content = await taiga.answer_question(message)
-            return JSONResponse(content={"content": content, "usage": None})
-        except Exception as exc:
-            logger.exception("Taiga direct answer failed")
-            return JSONResponse(status_code=502, content={"error": f"Không lấy được dữ liệu Taiga: {exc}"})
-
     status_code, payload = await agent.complete(message, history)
     return JSONResponse(status_code=status_code, content=payload)
 
@@ -143,15 +135,5 @@ async def chat_stream(request: Request):
     body = await request.json()
     message = body.get("message", "")
     history = body.get("history", [])
-
-    if taiga.is_taiga_question(message):
-        async def generate_taiga():
-            try:
-                yield await taiga.answer_question(message)
-            except Exception as exc:
-                logger.exception("Taiga direct stream answer failed")
-                yield f"Không lấy được dữ liệu Taiga: {exc}"
-
-        return StreamingResponse(generate_taiga(), media_type="text/plain; charset=utf-8")
 
     return StreamingResponse(agent.stream(message, history), media_type="text/plain; charset=utf-8")
