@@ -15,61 +15,6 @@ function createClientId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function createTypewriter(onUpdate) {
-  let pending = '';
-  let visible = '';
-  let running = false;
-  let finishResolver = null;
-
-  const delayFor = (character) => {
-    if ('.!?'.includes(character)) return 120;
-    if (',;:'.includes(character)) return 65;
-    if (character === '\n') return 80;
-    return 12 + Math.floor(Math.random() * 12);
-  };
-  const batchSize = () => {
-    if (pending.length > 600) return 14;
-    if (pending.length > 240) return 8;
-    if (pending.length > 80) return 4;
-    return 1;
-  };
-  const next = () => {
-    if (!pending) {
-      running = false;
-      if (finishResolver) {
-        finishResolver();
-        finishResolver = null;
-      }
-      return;
-    }
-    const count = batchSize();
-    const chunk = pending.slice(0, count);
-    pending = pending.slice(count);
-    visible += chunk;
-    onUpdate(visible);
-    window.setTimeout(() => window.requestAnimationFrame(next), delayFor(chunk[chunk.length - 1]));
-  };
-  const start = () => {
-    if (running) return;
-    running = true;
-    window.requestAnimationFrame(next);
-  };
-
-  return {
-    push(chunk) {
-      pending += chunk;
-      start();
-    },
-    finish() {
-      if (!pending && !running) return Promise.resolve();
-      return new Promise((resolve) => {
-        finishResolver = resolve;
-        start();
-      });
-    },
-  };
-}
-
 function Logo() {
   return <svg viewBox="0 0 512 512" aria-hidden="true">
     <path d="M151 116c9-16 24-16 33 0l68 122c7 12 7 24 0 36l-68 122c-9 16-24 16-33 0L77 274c-7-12-7-24 0-36l74-122z"/>
@@ -108,10 +53,13 @@ function Message({ message }) {
     <div className="avatar">{message.role === 'user' ? 'Y' : 'AI'}</div>
     {message.role === 'assistant' ? <div className="assistant-content">
       <div className={`bubble ${message.error ? 'error-bubble' : ''} ${message.streaming ? 'streaming' : ''}`}>
-        <Markdown text={message.content} />
-        {message.streaming && <span className="typing-dots" role="status" aria-label="AI đang trả lời">
+        {message.streaming
+          ? <span className="streaming-text">{message.content}</span>
+          : <Markdown text={message.content} />}
+        {message.streaming && !message.content && <span className="typing-dots" role="status" aria-label="AI đang trả lời">
           <span /><span /><span />
         </span>}
+        {message.streaming && message.content && <span className="streaming-caret" aria-hidden="true" />}
       </div>
       {!message.streaming && !message.error && <div className="response-status visible"><span>✓ Đã trả lời xong</span></div>}
     </div> : <div className="bubble">{message.content}</div>}
@@ -206,20 +154,24 @@ export default function App() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let answer = '';
-      const typewriter = createTypewriter((visible) => {
-        setMessages((items) => items.map((item) => item.id === assistantId ? { ...item, content: visible } : item));
-      });
+      let renderFrame = null;
+      const renderStream = () => {
+        renderFrame = null;
+        setMessages((items) => items.map((item) => item.id === assistantId ? { ...item, content: answer } : item));
+      };
+      const scheduleRender = () => {
+        if (renderFrame === null) renderFrame = window.requestAnimationFrame(renderStream);
+      };
       while (true) {
         const { value: chunk, done } = await reader.read();
         if (done) break;
         const text = decoder.decode(chunk, { stream: true });
         answer += text;
-        typewriter.push(text);
+        scheduleRender();
       }
       const finalChunk = decoder.decode();
       answer += finalChunk;
-      if (finalChunk) typewriter.push(finalChunk);
-      await typewriter.finish();
+      if (renderFrame !== null) window.cancelAnimationFrame(renderFrame);
       answer = answer.trim() || 'Không nhận được phản hồi.';
       const assistant = { id: assistantId, role: 'assistant', content: answer };
       setMessages((items) => items.map((item) => item.id === assistantId ? assistant : item));
