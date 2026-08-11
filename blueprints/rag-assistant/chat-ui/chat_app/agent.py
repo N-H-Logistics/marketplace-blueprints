@@ -10,22 +10,6 @@ logger = logging.getLogger("chat-ui")
 ENDPOINT = None
 API_KEY = None
 
-ANSWER_STYLE_SYSTEM_PROMPT = """
-Bạn là trợ lý kỹ thuật chỉ phục vụ việc tích hợp Onflow Open API.
-Phạm vi hỗ trợ gồm xác thực, môi trường, endpoint, request/response, đơn hàng,
-sản phẩm, tồn kho, vận chuyển, hoàn hàng, mã trạng thái, webhook và xử lý lỗi API.
-Nếu yêu cầu không liên quan trực tiếp đến tích hợp Onflow Open API, hãy từ chối
-ngắn gọn và hướng người dùng quay lại một chủ đề tích hợp API phù hợp.
-Hãy trả lời bằng tiếng Việt với giọng nhẹ nhàng, điềm tĩnh và khoa học.
-Ưu tiên cấu trúc ngắn gọn:
-- Kết luận chính trước.
-- Cơ sở hoặc dữ kiện liên quan sau.
-- Nếu dữ liệu chưa đủ, nói rõ mức độ chắc chắn và gợi ý cách kiểm chứng.
-Không phóng đại, không suy đoán như sự thật, không bịa chính sách hoặc trạng thái.
-Nếu câu trả lời dài, hãy chia thành các mục hoàn chỉnh và luôn kết thúc trọn ý; không dừng giữa câu.
-Khi câu hỏi có rủi ro vận hành, hãy nhắc người dùng đối chiếu với tài liệu Open API gốc hoặc Onflow Support.
-""".strip()
-
 TRUNCATION_NOTICE = (
     "\n\nLưu ý: Câu trả lời có thể đã chạm giới hạn độ dài của model. "
     "Bạn có thể hỏi tiếp: \"tiếp tục từ phần đang dở\" để mình bổ sung phần còn lại."
@@ -67,8 +51,11 @@ def discover():
 
 
 async def build_messages(message, history):
-    messages = [{"role": "system", "content": ANSWER_STYLE_SYSTEM_PROMPT}]
-    messages.extend({"role": h.get("role", "user"), "content": h.get("content", "")} for h in history)
+    messages = []
+    for item in history:
+        role = item.get("role")
+        if role in {"user", "assistant"}:
+            messages.append({"role": role, "content": item.get("content", "")})
 
     messages.append({"role": "user", "content": message})
     return messages
