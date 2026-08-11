@@ -53,6 +53,56 @@ function bindCodeCopyButtons(bubble) {
   });
 }
 
+function splitTableRow(line) {
+  const value = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  const cells = [];
+  let cell = '';
+  let escaped = false;
+  let inlineCode = false;
+
+  for (const character of value) {
+    if (escaped) {
+      cell += character;
+      escaped = false;
+    } else if (character === '\\') {
+      escaped = true;
+    } else if (character === '`') {
+      inlineCode = !inlineCode;
+      cell += character;
+    } else if (character === '|' && !inlineCode) {
+      cells.push(cell.trim());
+      cell = '';
+    } else {
+      cell += character;
+    }
+  }
+  if (escaped) cell += '\\';
+  cells.push(cell.trim());
+  return cells;
+}
+
+function isTableSeparator(line) {
+  if (!line.trim().startsWith('|')) return false;
+  const cells = splitTableRow(line);
+  return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s/g, '')));
+}
+
+function renderTable(headers, rows) {
+  const headerHTML = headers.map((cell) => `<th scope="col">${renderInlineMarkdown(cell)}</th>`).join('');
+  const bodyHTML = rows.map((row) => {
+    const normalized = headers.map((_, index) => row[index] || '');
+    return '<tr>' + normalized.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join('') + '</tr>';
+  }).join('');
+  return `
+    <div class="api-table-wrap">
+      <table class="api-table">
+        <thead><tr>${headerHTML}</tr></thead>
+        <tbody>${bodyHTML}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function statusClass(value) {
   const normalized = (value || '').toLowerCase();
   if (normalized.includes('done') || normalized.includes('đã đóng')) return 'status-done';
@@ -198,7 +248,9 @@ export function renderFormattedAnswer(bubble, text) {
     codeLines = [];
   }
 
-  trimmed.split('\n').forEach((rawLine) => {
+  const lines = trimmed.split('\n');
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
     const line = rawLine.trim();
     const fence = line.match(/^```([\w+-]*)\s*$/);
 
@@ -210,12 +262,27 @@ export function renderFormattedAnswer(bubble, text) {
       } else {
         flushCode();
       }
-      return;
+      continue;
     }
 
     if (codeLanguage !== null) {
       codeLines.push(rawLine);
-      return;
+      continue;
+    }
+
+    if (line.startsWith('|') && index + 1 < lines.length && isTableSeparator(lines[index + 1])) {
+      flushParagraph();
+      flushList();
+      const headers = splitTableRow(line);
+      const rows = [];
+      index += 2;
+      while (index < lines.length && lines[index].trim().startsWith('|') && !isTableSeparator(lines[index])) {
+        rows.push(splitTableRow(lines[index]));
+        index += 1;
+      }
+      index -= 1;
+      blocks.push(renderTable(headers, rows));
+      continue;
     }
 
     const ordered = line.match(/^\d+[.)]\s+(.+)$/);
@@ -225,14 +292,14 @@ export function renderFormattedAnswer(bubble, text) {
     if (!line) {
       flushParagraph();
       flushList();
-      return;
+      continue;
     }
 
     if (heading) {
       flushParagraph();
       flushList();
       blocks.push('<h3>' + renderInlineMarkdown(heading[1]) + '</h3>');
-      return;
+      continue;
     }
 
     if (ordered || unordered) {
@@ -243,12 +310,12 @@ export function renderFormattedAnswer(bubble, text) {
       }
       listType = nextType;
       listItems.push((ordered || unordered)[1]);
-      return;
+      continue;
     }
 
     flushList();
     paragraphLines.push(line);
-  });
+  }
 
   flushParagraph();
   flushList();

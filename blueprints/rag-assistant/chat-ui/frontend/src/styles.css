@@ -576,6 +576,48 @@
       font: inherit;
       white-space: pre;
     }
+    .api-table-wrap {
+      width: 100%;
+      min-width: 0;
+      overflow-x: auto;
+      border: 1px solid var(--do-gray-200);
+      border-radius: 10px;
+      background: var(--do-white);
+      box-shadow: 0 5px 16px rgba(15, 23, 42, 0.05);
+      scrollbar-color: var(--do-gray-300) transparent;
+    }
+    .api-table {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .api-table th,
+    .api-table td {
+      padding: 11px 14px;
+      border-right: 1px solid var(--do-gray-200);
+      border-bottom: 1px solid var(--do-gray-200);
+      vertical-align: top;
+    }
+    .api-table th:last-child,
+    .api-table td:last-child { border-right: 0; }
+    .api-table tbody tr:last-child td { border-bottom: 0; }
+    .api-table th {
+      background: #fff7ed;
+      color: #7c2d12;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .api-table td { color: var(--do-gray-700); }
+    .api-table tbody tr:nth-child(even) td { background: #fafbfc; }
+    .api-table tbody tr:hover td { background: #fffaf5; }
+    .api-table td:first-child { color: var(--do-gray-900); font-weight: 600; }
+    .api-table code { white-space: nowrap; }
     .formatted-answer ol,
     .formatted-answer ul {
       margin: 2px 0 2px 22px;
